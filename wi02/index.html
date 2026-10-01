@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Toca do Peixe — Gestão & Calendário (CW04-WI02)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Navigation Bar -->
+    <header class="top-bar">
+      <div class="brand-section">
+        <span class="brand-badge">TP</span>
+        <span class="brand-title">Toca do Peixe · Gestão</span>
+        <span class="brand-subtitle">UX-CW04 · WI02</span>
+      </div>
+      <div class="user-section">
+        <span class="user-badge">👤 Carla Nogueira (Gestora de Operações e Resultados)</span>
+        <button class="btn-mobile-toggle" onclick="window.ManagementApp.toggleMobileView()">
+          📱 Alternar Modo Mobile
+        </button>
+      </div>
+    </header>
+
+    <!-- Scenario Toolbar (Audit Runner & Navigation) -->
+    <div class="scenario-toolbar">
+      <span class="scenario-toolbar-label">Ensaio:</span>
+      <div class="scenario-chips" id="scenario-chips-container">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+    <!-- Main Workspace Layout -->
+    <div class="main-wrapper">
+      <!-- Sidebar Navigation -->
+      <aside class="sidebar">
+        <nav>
+          <a class="nav-item active" id="nav-ges-004" onclick="window.ManagementApp.navigateSurface('SCR-GES-004')">
+            <span>🗓️</span>
+            <span>GES-004 · Calendário</span>
+          </a>
+          <a class="nav-item" id="nav-ges-005" onclick="window.ManagementApp.navigateSurface('SCR-GES-005')">
+            <span>📊</span>
+            <span>GES-005 · Cenários & Adoção</span>
+          </a>
+        </nav>
+        <div class="sidebar-footer">
+          <strong>Regra Canônica:</strong> Salvar proposta não aplica alteração. Salvar cenário não altera operação. Clique não é adoção.
+        </div>
+      </aside>
+
+      <!-- Content Area -->
+      <main class="content-area">
+        <!-- Surface SCR-GES-004: Calendário Operacional e Unidades -->
+        <section id="surface-ges-004" class="surface-container active">
+          <div class="surface-header">
+            <span class="surface-code-tag">SCR-GES-004</span>
+            <h1 class="surface-title">Calendário Operacional e Janelas de Serviço</h1>
+            <p class="surface-subtitle">Gestão de janelas de serviço, análise prévia de impacto concorrente e publicação por destino.</p>
+          </div>
+          <div id="ges-004-content">
+            <!-- Dynamic Content -->
+          </div>
+        </section>
+
+        <!-- Surface SCR-GES-005: Cenários e Adoção -->
+        <section id="surface-ges-005" class="surface-container">
+          <div class="surface-header">
+            <span class="surface-code-tag">SCR-GES-005</span>
+            <h1 class="surface-title">Cenários de Decisão e Medição de Adoção</h1>
+            <p class="surface-subtitle">Simulação financeira com limites contratuais explícitos e medição rigorosa de adoção de fluxos.</p>
+          </div>
+          <div id="ges-005-content">
+            <!-- Dynamic Content -->
+          </div>
+        </section>
+
+        <!-- Invariants & Truthfulness Proof Box (FND-19 / Spec Quality Gate / v2.3) -->
+        <div class="proof-box">
+          <div class="proof-title">
+            <span>🛡️ Auditoria Contínua de Invariantes & Contratos (FND-19 / V6 / Spec Gate v2.3)</span>
+          </div>
+          <p style="font-size: 12px; color: var(--fg-muted); margin-bottom: 8px;">
+            Invariantes de governança (P1–P3 e N1–N8) são avaliadas em tempo real a partir do estado factual. Ensaios adversariais sob ataque (A1–A6) dependem do harness autônomo via CDP e constam como NOT_RUN em modo standalone:
+          </p>
+          <ul class="proof-list" id="invariants-list">
+            <!-- Rendered via JS -->
+          </ul>
+        </div>
+      </main>
+    </div>
+
+    <!-- Contextual Slide-out Drawer for "Origem Factual" -->
+    <div class="drawer-overlay" id="drawer-overlay" onclick="window.ManagementApp.closeDrawer()"></div>
+    <div class="drawer" id="contextual-drawer">
+      <div class="drawer-header">
+        <div class="drawer-title" id="drawer-title-text">Origem Factual</div>
+        <button class="drawer-close" onclick="window.ManagementApp.closeDrawer()">&times;</button>
+      </div>
+      <div class="drawer-body" id="drawer-body-content"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

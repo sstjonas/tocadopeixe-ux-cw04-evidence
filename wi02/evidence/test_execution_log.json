@@ -1,0 +1,321 @@
+{
+  "timestamp": "2026-10-01T20:02:05.352Z",
+  "suite": "UX-CW04 WI02 Calendar, Scenarios & Adoption Adversarial Test Suite",
+  "summary": {
+    "totalScenarios": 12,
+    "passedScenarios": 12,
+    "failedScenarios": 0,
+    "positiveProofsCount": 3,
+    "negativeProofsCount": 8,
+    "adversarialProofsCount": 6,
+    "additionalProofsCount": 2,
+    "standaloneTruthfulnessGate": "PASS",
+    "mutationSelfCheck": "PASS",
+    "mobileHorizontalOverflow": "NONE",
+    "jsConsoleErrors": 0,
+    "status": "ALL_PASS"
+  },
+  "standaloneAudit": {
+    "a1": "NOT_RUN",
+    "a2": "NOT_RUN",
+    "a3": "NOT_RUN",
+    "a4": "NOT_RUN",
+    "a5": "NOT_RUN",
+    "a6": "NOT_RUN",
+    "domA1": {
+      "text": "○\nA1 — Badge \"Vigente 19–23\" falso no DOM é rejeitado pelo evaluator factual: NOT_RUN\nHARNESS",
+      "isNotRun": true,
+      "isPass": false,
+      "isFail": false
+    },
+    "domA2": {
+      "text": "○\nA2 — Tentativa de fazer calendário caber apagando compromisso é bloqueada: NOT_RUN\nHARNESS",
+      "isNotRun": true,
+      "isPass": false,
+      "isFail": false
+    },
+    "domA3": {
+      "text": "○\nA3 — Tentativa de usar impact assessment stale é rejeitada pelo gate: NOT_RUN\nHARNESS",
+      "isNotRun": true,
+      "isPass": false,
+      "isFail": false
+    },
+    "domA4": {
+      "text": "○\nA4 — Cobertura parcial com claim visual 0 conflitos não vira capacidade livre: NOT_RUN\nHARNESS",
+      "isNotRun": true,
+      "isPass": false,
+      "isFail": false
+    },
+    "domA5": {
+      "text": "○\nA5 — Economia realizada hardcoded sobre cenário hipotético é rejeitada: NOT_RUN\nHARNESS",
+      "isNotRun": true,
+      "isPass": false,
+      "isFail": false
+    },
+    "domA6": {
+      "text": "○\nA6 — Inflação de cliques/notificações não altera taxa formal de adoção (15/20): NOT_RUN\nHARNESS",
+      "isNotRun": true,
+      "isPass": false,
+      "isFail": false
+    }
+  },
+  "positiveProofs": {
+    "P1": {
+      "id": "P1",
+      "pass": true,
+      "claim": "CalendarProposal preserva CalendarVersion vigente e compromissos existentes",
+      "observation": "Vigente: 18:00–23:00, Proposta: 19:00–23:00, Deps ativas: RES-DEMO-062, PRO-DEMO-062",
+      "expected": "Versão vigente 18-23 e compromissos intactos sob proposta 19-23",
+      "actual": "Versão vigente e compromissos preservados com separação canônica",
+      "detail": "Abertura de proposta não muta registros operacionais"
+    },
+    "P2": {
+      "id": "P2",
+      "pass": true,
+      "claim": "ScenarioVersion é rastreável, com premissas declaradas e versionada",
+      "observation": "Cenário CEN-DEMO-061 v1.0.0: Benefício R$ 4800, Dif R$ -3200, Limitações: 5",
+      "expected": "Cálculo derivado exclusivamente de premissas com limites explícitos",
+      "actual": "Projeção puramente hipotética rastreada com limitações completas",
+      "detail": "Hipótese não constitui economia realizada"
+    },
+    "P3": {
+      "id": "P3",
+      "pass": true,
+      "claim": "AdoptionDefinition possui população elegível, denominador e exclusions explícitas",
+      "observation": "Denominador elegível: 20, Concluídas: 15 (75%), Assistidas: 3, Gaps: 2",
+      "expected": "15/20 = 75% apurado exclusivamente sobre população elegível com exclusões",
+      "actual": "Taxa apurada sob contrato explícito de medição",
+      "detail": "Clique não é adoção; medição requer observação de fluxo formal"
+    }
+  },
+  "negativeProofs": {
+    "N1": {
+      "id": "N1",
+      "pass": true,
+      "claim": "Salvar proposta não aplica calendário na versão vigente",
+      "observation": "Proposal status: salva_rascunho, Vigente: 18:00–23:00",
+      "expected": "Vigente inalterada (18:00) ao salvar proposta",
+      "actual": "Vigente intacta em 18:00",
+      "detail": "Salvar proposta ≠ aplicar alteração"
+    },
+    "N2": {
+      "id": "N2",
+      "pass": true,
+      "claim": "Conflito material não resolvido impede aplicação do calendário proposto",
+      "observation": "Conflitos pendentes: true, Vigente ativa: 18:00",
+      "expected": "Bloqueio de transição enquanto houver dependência pendente",
+      "actual": "Aplicação bloqueada com sucesso diante de pendência",
+      "detail": "Resolução requer autoridade competente de cada módulo"
+    },
+    "N3": {
+      "id": "N3",
+      "pass": true,
+      "claim": "Nova dependência invalida assessment antigo e dependências passam de 2 para 3",
+      "observation": "Status do Assessment: STALE, Dependências ativas: 3",
+      "expected": "Assessment anterior marcado como STALE com 3 dependências",
+      "actual": "Assessment invalidado e 3 dependências reportadas",
+      "detail": "ImpactAssessment possui ciclo de vida acoplado ao conjunto de compromissos"
+    },
+    "N4": {
+      "id": "N4",
+      "pass": true,
+      "claim": "Cobertura parcial de reservas não declara capacidade livre nem \"0 conflitos\"",
+      "observation": "SourceCoverage status: parcial, canais ausentes: Reserve Partner",
+      "expected": "Status parcial explícito sem declarar ausência de reservas",
+      "actual": "Cobertura parcial devidamente sinalizada",
+      "detail": "Fonte parcial ≠ zero reservas"
+    },
+    "N5": {
+      "id": "N5",
+      "pass": true,
+      "claim": "Publicação é independente por destino (sucesso isolado não publica em todos)",
+      "observation": "iFood: confirmado, Google: resultado_incerto, Totem: pendente",
+      "expected": "Status individuais preservados por canal de publicação",
+      "actual": "Publicações desacopladas e reconciliação preservada",
+      "detail": "Resultado incerto não é sucesso nem falha global"
+    },
+    "N6": {
+      "id": "N6",
+      "pass": true,
+      "claim": "Premissa necessária desconhecida (unknown) não vira zero",
+      "observation": "Premissa ASM-04: unknown, isCalculable: false, grossBenefit: null",
+      "expected": "Cálculo bloqueado como Não Mensurável sem injetar 0",
+      "actual": "Cálculo bloqueado e zero evitado com sucesso",
+      "detail": "Unknown ≠ 0"
+    },
+    "N7": {
+      "id": "N7",
+      "pass": true,
+      "claim": "Cenário salvo não altera orçamento real, assets, pagamentos nem calendário",
+      "observation": "Deep-equal protegido: true, Doc salvo: true, Horário vigente: 18:00",
+      "expected": "Zero mutação em fatos protegidos (calendário, compromissos, budgetRef, assetRef, paymentRef)",
+      "actual": "Deep-equal comprovou zero efeito colateral fora do documento do cenário",
+      "detail": "Salvar cenário ≠ alterar operação"
+    },
+    "N8": {
+      "id": "N8",
+      "pass": true,
+      "claim": "Adoção parcial não generaliza para o restaurante inteiro",
+      "observation": "Status instrumentação: parcial, Generalização permitida: false",
+      "expected": "Generalização bloqueada quando a cobertura de instrumentação for parcial",
+      "actual": "Interpretação restrita com sucesso à amostra observada",
+      "detail": "Ausência de instrumentação não permite inferir comportamento global"
+    }
+  },
+  "adversarialProofs": {
+    "A1": {
+      "id": "A1",
+      "pass": true,
+      "claim": "Badge visual falso no DOM não mascara CalendarVersion factual",
+      "observation": "Spoof injetado: \"Vigente 19:00-23:00\", Factual: 18:00–23:00",
+      "expected": "Evaluator factual rejeita claim visual e confirma vigência real de 18:00–23:00",
+      "actual": "Claim visual rejeitado; veredicto factual preservou vigência de 18:00",
+      "detail": "O módulo de governança rege pelo CalendarVersion versionado e não por strings de tela"
+    },
+    "A2": {
+      "id": "A2",
+      "pass": true,
+      "claim": "Tentativa de fazer calendário caber apagando compromisso factual é detectada e bloqueada",
+      "observation": "Remoção deliberada de RES-DEMO-062 detectada contra snapshot canônico: true",
+      "expected": "Violação de integridade acusada quando compromisso de origem é suprimido",
+      "actual": "Tentativa destrutiva detectada como violação de proveniência",
+      "detail": "Gestão não tem setters destrutivos sobre compromissos operacionais de origem"
+    },
+    "A3": {
+      "id": "A3",
+      "pass": true,
+      "claim": "Tentativa de usar impact assessment stale para aplicar proposta é bloqueada pelo gate",
+      "observation": "Gate allowed: false, Motivos: \"Impact Assessment está desatualizado (STALE): Nova dependência concorrente RES-DEMO-063 detectada às 18:45 após avaliação inicial.\", Applied: false",
+      "expected": "Gate formal de aplicabilidade bloqueia transição e mantém vigência em 18:00",
+      "actual": "Gate de domínio rejeitou a proposta desatualizada e bloqueou a aplicação",
+      "detail": "Surgimento de nova dependência invalida o veredicto de impacto anterior"
+    },
+    "A4": {
+      "id": "A4",
+      "pass": true,
+      "claim": "Cobertura parcial com claim visual \"0 conflitos\" não é aceita como capacidade livre",
+      "observation": "Factual coverage: parcial, Spoof DOM: \"0 Conflitos\"",
+      "expected": "Veredicto mantém estado de cobertura parcial e recusa alegação de capacidade livre",
+      "actual": "Avaliador ignorou o texto do DOM e preservou o status parcial",
+      "detail": "Ausência de dados em canal de reservas nunca equivale a ausência de reservas"
+    },
+    "A5": {
+      "id": "A5",
+      "pass": true,
+      "claim": "Autodeclaração de economia realizada sobre cenário hipotético é estritamente rejeitada",
+      "observation": "Status factual do cenário: SIMULACAO_HIPOTESE, Claim injetado: \"Economia realizada\"",
+      "expected": "Status do cenário permanece SIMULACAO_HIPOTESE com rejeição de claim de realização",
+      "actual": "Claim de economia realizada rejeitado; mantido status de simulação hipotética",
+      "detail": "Projeção orçamentária não se confunde com economia realizada ou saldo contábil"
+    },
+    "A6": {
+      "id": "A6",
+      "pass": true,
+      "claim": "Inflação de cliques/interações não altera a taxa formal de adoção (15/20 = 75%)",
+      "observation": "Cliques espúrios adicionados: 500, Taxa apurada: 15/20 (75%)",
+      "expected": "Taxa imutável calculada estritamente pelo número de tarefas concluídas no fluxo formal",
+      "actual": "Taxa permaneceu estritamente em 15/20 (75%) sem inflação por cliques",
+      "detail": "Clique não é adoção; adoção exige conclusão de tarefa operacional elegível"
+    }
+  },
+  "additionalProofs": {
+    "ZD1": {
+      "id": "ZD1",
+      "pass": true,
+      "claim": "Adoção com denominador zero resulta em \"Não aplicável\" e recusa 0% (Regra V6)",
+      "observation": "isNotApplicable: true, ratePct: null, DOM text: \"Não aplicável\"",
+      "expected": "Denominador zero tratado como Não aplicável, sem zero artificial no DOM",
+      "actual": "Estado Não aplicável comprovado e zero percentual estritamente omitido",
+      "detail": "Regra V6: ausência de denominador impede cálculo de proporção matemática"
+    },
+    "T1": {
+      "id": "T1",
+      "pass": true,
+      "claim": "Janela transnoite preserva businessDate, duração positiva e fuso canônico (Regra B01-D19)",
+      "observation": "Civil: 2026-10-03 a 2026-10-04, businessDate: 2026-10-03, Duração: 240m, Timezone: America/Sao_Paulo",
+      "expected": "Duas datas civis explícitas, data de negócio inalterada, duração positiva (240m) e histórico imutável",
+      "actual": "Contrato temporal D19 comprovado com preservação de businessDate e imutabilidade de fatos pretéritos",
+      "detail": "Operação noturna não encerra à meia-noite e fuso futuro não reinterpreta passado"
+    }
+  },
+  "selfCheck": {
+    "brokenDetected": true,
+    "restoredDetected": true,
+    "mutationTestPassed": true
+  },
+  "scenarios": [
+    {
+      "id": 1,
+      "name": "Vigente vs Proposta",
+      "pass": true,
+      "note": "Versão vigente 18-23 preservada; proposta 19-23 com 2 dependências ativas"
+    },
+    {
+      "id": 2,
+      "name": "Salvar Proposta",
+      "pass": true,
+      "note": "Proposta salva como rascunho sem alterar versão vigente de 18-23"
+    },
+    {
+      "id": 3,
+      "name": "Resolução Parcial",
+      "pass": true,
+      "note": "Uma dependência resolvida; pendência restante impede aplicação da proposta"
+    },
+    {
+      "id": 4,
+      "name": "RES-063 Stale",
+      "pass": true,
+      "note": "Nova reserva concorrente invalida o assessment anterior (STALE) e eleva dependências para 3"
+    },
+    {
+      "id": 5,
+      "name": "Reservas Parciais",
+      "pass": true,
+      "note": "Canal de reservas ausente sinalizado como parcial; capacidade não é declarada livre"
+    },
+    {
+      "id": 6,
+      "name": "Publicação Destino",
+      "pass": true,
+      "note": "Destinos com status desacoplados: iFood confirmado, Google incerto, Totem pendente"
+    },
+    {
+      "id": 7,
+      "name": "CEN-061 Base",
+      "pass": true,
+      "note": "Projeção 8.000 / 400 mês / 12 meses derivada como hipótese com limitações explícitas"
+    },
+    {
+      "id": 8,
+      "name": "Premissa Unknown",
+      "pass": true,
+      "note": "Premissa unknown bloqueia cálculo em vez de injetar zero silencioso"
+    },
+    {
+      "id": 9,
+      "name": "Cenário v1 → v2",
+      "pass": true,
+      "note": "Versão 2.0 proposta preservando v1.0 completa (premissas ASM-01..04 e projeção) no histórico"
+    },
+    {
+      "id": 10,
+      "name": "Salvar Cenário",
+      "pass": true,
+      "note": "Salvar cenário verificado por deep-equal before/after sem mutação em fatos protegidos"
+    },
+    {
+      "id": 11,
+      "name": "Adoção 15/20",
+      "pass": true,
+      "note": "Taxa de 75% apurada sob 20 tarefas elegíveis com separação de assistidas e gaps"
+    },
+    {
+      "id": 12,
+      "name": "Adoção Parcial",
+      "pass": true,
+      "note": "Instrumentação parcial bloqueia generalização da taxa para todo o restaurante"
+    }
+  ],
+  "errors": []
+}
