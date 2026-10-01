@@ -1,7 +1,7 @@
-# Dossiê de Evidências — UX-CW04 WI01: Leitura, Decisão e Plano (R1 Hardened)
+# Dossiê de Evidências — UX-CW04 WI01: Leitura, Decisão e Plano (R2 Integridade)
 **Projeto:** Toca do Peixe  
 **Frente:** CW-04 — Decisão Gerencial / Gestão  
-**Work Item:** CW04-WI01 — Leitura, decisão e plano (R1)  
+**Work Item:** CW04-WI01 — Leitura, decisão e plano (R2 — Correção de Integridade do Painel)  
 **Data:** 01/10/2026  
 **Status do Executor:** DONE (Pronto para re-review independente do ChatGPT)  
 **Governança:** DONE ≠ APPROVED
@@ -47,9 +47,16 @@
 
 ---
 
-## 4. Auditoria de Provas Especiais Endurecidas (R1)
+## 4. Auditoria de Provas Especiais Endurecidas (R1 & R2)
 
-### Positive Proofs (P1-P3)
+### 4.1 Standalone Proof Panel Integrity (R2-F01)
+
+- **A1, A2, A3, A4, A6 (Adversariais CDP):** Inicializados e renderizados estritamente como **`NOT_RUN`** em modo standalone (com badge visual neutro, ícone `○` e tag de origem `harness`).
+- **A5 (Setters Proibidos):** Avaliado factual e dinamicamente em tempo real (`PASS` com tag de origem `runtime`).
+- **Zero PASS Hardcoded:** Removidos integralmente todos os booleanos pré-definidos do invariant engine.
+- **Screenshot Canônica:** [standalone-proof-panel-not-run.png](screenshots/standalone-proof-panel-not-run.png)
+
+### 4.2 Positive Proofs (P1-P3)
 
 | ID | Requisito / Claim | Fato Observado / Evidência | Esperado | Atual | Status |
 |---|---|---|---|---|:---:|
@@ -57,7 +64,7 @@
 | **P2** | Cadeia de governança completa: achado -> plano -> ação -> evidência -> verificação -> outcome | Plano PA-DEMO-061 ligado a AUD-DEMO-061,OS-DEMO-061, ação ACT-01 (executada), evidência EVD-ACT-01, verificação aceita, outcome OUT-DEMO-061-01 | Todos os 6 elos presentes com identidades canônicas e OutcomeObservation formal após verificação | Cadeia completa 6/6 elos verificada com OutcomeObservation formal | **PASS** |
 | **P3** | Versionamento formal de meta preserva snapshot anterior sem reescrita de histórico | Versão vigente: v2.0.0 (R$ 14500); Histórico arquivado: v1.0.0 (R$ 12000) | v2.0 proposta com autor e justificativa, v1.0 preservada no array de histórico | v1.0 intacta e v2.0 vigente | **PASS** |
 
-### Negative Proofs (N1-N7)
+### 4.3 Negative Proofs (N1-N7)
 
 | ID | Requisito / Claim | Fato Observado / Evidência | Esperado | Atual | Status |
 |---|---|---|---|---|:---:|
@@ -69,7 +76,7 @@
 | **N6** | Encerramento de reunião de alinhamento não encerra plano de ação nem tarefas pendentes | meeting: encerrada, plano: EM_ANDAMENTO, ACT-02: pendente | meeting.status === "encerrada" e plano.status === "EM_ANDAMENTO" | Reunião encerrada e plano mantido ativo com pendências | **PASS** |
 | **N7** | Atribuição a ator sem credencial é recusada por segurança e alçada sem vazamento de dados | Ator recusado: "Prestador Sem Escopo", motivo: "Acesso negado: o usuário não possui permissão de acesso ao caso operacional e ao objeto do plano (Regra de Segurança e Escopo).", responsável mantido: "Engenheiro de Manutenção" | success === false, assignee inalterado ("Engenheiro de Manutenção"), zero dados restritos expostos | Atribuição recusada com sucesso, assignee inalterado e sem vazamento de dados | **PASS** |
 
-### Adversarial Proofs (A1-A6)
+### 4.4 Adversarial Proofs Autorizados pelo Harness CDP (A1-A6)
 
 | ID | Tentativa Adversarial / Claim | Injeção & Fato Observado | Comportamento Esperado | Resultado Real | Status |
 |---|---|---|---|---|:---:|
@@ -86,7 +93,7 @@
 
 - **Falso Claim Detectado:** PASS (Claim declarativo 'PASS' rejeitado quando fato de origem foi corrompido).
 - **Mutation Test:** PASS (Avaliador factual retornou false sob injeção de fato inválido e true após restauração).
-- **Exit-Code Gate:** Conectado a todos os gates (cenários, P, N, A, self-check, mobile e console).
+- **Exit-Code Gate:** Conectado a todos os gates (cenários, P, N, A, standalone audit, self-check, mobile e console).
 
 ---
 

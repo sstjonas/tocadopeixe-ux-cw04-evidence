@@ -667,9 +667,44 @@ body {
 .proof-item.pass {
   color: var(--success-fg);
 }
+.proof-item.pass strong {
+  color: #15803D;
+  background: #DCFCE7;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
 .proof-item.fail {
   color: var(--danger-fg);
   font-weight: 600;
+}
+.proof-item.fail strong {
+  color: #B91C1C;
+  background: #FEE2E2;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.proof-item.not-run {
+  color: var(--fg-muted);
+}
+.proof-item.not-run strong {
+  color: #64748B;
+  background: #F1F5F9;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.proof-source-tag {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #F8FAFC;
+  border: 1px solid #CBD5E1;
+  color: #64748B;
+  text-transform: uppercase;
+  font-weight: 500;
+  margin-left: 6px;
 }
 
 /* Mobile Frame Simulation */

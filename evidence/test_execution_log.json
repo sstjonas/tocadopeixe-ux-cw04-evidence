@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-10-01T18:51:50.226Z",
-  "suite": "UX-CW04 WI01 Management Decision & Adversarial Test Suite (R1 Hardened)",
+  "timestamp": "2026-10-01T19:15:21.750Z",
+  "suite": "UX-CW04 WI01 Management Decision & Adversarial Test Suite (R2 Hardened)",
   "summary": {
     "totalScenarios": 12,
     "passedScenarios": 12,
@@ -8,10 +8,55 @@
     "positiveProofsCount": 3,
     "negativeProofsCount": 7,
     "adversarialProofsCount": 6,
+    "standalonePanelAudit": "PASS",
     "mutationSelfCheck": "PASS",
     "mobileHorizontalOverflow": "NONE",
     "jsConsoleErrors": 0,
     "status": "ALL_PASS"
+  },
+  "standaloneAudit": {
+    "a1": "NOT_RUN",
+    "a2": "NOT_RUN",
+    "a3": "NOT_RUN",
+    "a4": "NOT_RUN",
+    "a5": "PASS",
+    "a6": "NOT_RUN",
+    "domA1": {
+      "text": "○\nA1 — PASS autodeclarado é rejeitado sem invariante real: NOT_RUN\nHARNESS",
+      "isNotRun": true,
+      "isPass": false,
+      "isFail": false
+    },
+    "domA2": {
+      "text": "○\nA2 — Badge hardcoded não mascara SourceCoverage factual: NOT_RUN\nHARNESS",
+      "isNotRun": true,
+      "isPass": false,
+      "isFail": false
+    },
+    "domA3": {
+      "text": "○\nA3 — Valor sem provenance é recalculado ou invalidado: NOT_RUN\nHARNESS",
+      "isNotRun": true,
+      "isPass": false,
+      "isFail": false
+    },
+    "domA4": {
+      "text": "○\nA4 — Status \"done\" forçado não produz resultado verificado: NOT_RUN\nHARNESS",
+      "isNotRun": true,
+      "isPass": false,
+      "isFail": false
+    },
+    "domA5": {
+      "text": "✓\nA5 — Setters gerenciais sobre fatos operacionais são impossíveis: PASS\nRUNTIME",
+      "isNotRun": false,
+      "isPass": true,
+      "isFail": false
+    },
+    "domA6": {
+      "text": "○\nA6 — Unidade sem fonte nunca fabrica zero no consolidado: NOT_RUN\nHARNESS",
+      "isNotRun": true,
+      "isPass": false,
+      "isFail": false
+    }
   },
   "positiveProofs": {
     "P1": {

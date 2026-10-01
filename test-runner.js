@@ -195,6 +195,69 @@ async function runTests() {
   const adversarialProofs = {};
 
   // -------------------------------------------------------------------------
+  // STANDALONE AUDIT & PROOF PANEL NOT_RUN SCREENSHOT (R2-F01)
+  // -------------------------------------------------------------------------
+  console.log('\n--- Verificando Painel de Invariantes em Modo Standalone (R2-F01) ---');
+  const standaloneAudit = await client.eval(`(() => {
+    const s = window.ManagementApp.getState();
+    const inv = s.invariants;
+    const getDomStatus = (id) => {
+      const el = document.getElementById(id);
+      return el ? {
+        text: el.innerText,
+        isNotRun: el.classList.contains('not-run'),
+        isPass: el.classList.contains('pass'),
+        isFail: el.classList.contains('fail')
+      } : null;
+    };
+
+    return {
+      a1: inv.a1 ? inv.a1.status : null,
+      a2: inv.a2 ? inv.a2.status : null,
+      a3: inv.a3 ? inv.a3.status : null,
+      a4: inv.a4 ? inv.a4.status : null,
+      a5: inv.a5 ? inv.a5.status : null,
+      a6: inv.a6 ? inv.a6.status : null,
+      domA1: getDomStatus('invariant-check-a1'),
+      domA2: getDomStatus('invariant-check-a2'),
+      domA3: getDomStatus('invariant-check-a3'),
+      domA4: getDomStatus('invariant-check-a4'),
+      domA5: getDomStatus('invariant-check-a5'),
+      domA6: getDomStatus('invariant-check-a6')
+    };
+  })()`);
+
+  const standalonePass = (
+    standaloneAudit.a1 === 'NOT_RUN' &&
+    standaloneAudit.a2 === 'NOT_RUN' &&
+    standaloneAudit.a3 === 'NOT_RUN' &&
+    standaloneAudit.a4 === 'NOT_RUN' &&
+    standaloneAudit.a5 === 'PASS' &&
+    standaloneAudit.a6 === 'NOT_RUN' &&
+    standaloneAudit.domA1 && standaloneAudit.domA1.isNotRun &&
+    standaloneAudit.domA2 && standaloneAudit.domA2.isNotRun &&
+    standaloneAudit.domA3 && standaloneAudit.domA3.isNotRun &&
+    standaloneAudit.domA4 && standaloneAudit.domA4.isNotRun &&
+    standaloneAudit.domA5 && standaloneAudit.domA5.isPass &&
+    standaloneAudit.domA6 && standaloneAudit.domA6.isNotRun
+  );
+
+  console.log(`[Standalone Panel] A1: ${standaloneAudit.a1}, A2: ${standaloneAudit.a2}, A3: ${standaloneAudit.a3}, A4: ${standaloneAudit.a4}, A5: ${standaloneAudit.a5}, A6: ${standaloneAudit.a6}`);
+  console.log(`[Standalone Panel Audit]: ${standalonePass ? 'PASS' : 'FAIL'}`);
+
+  if (!standalonePass) {
+    throw new Error(`R2-F01 Failure: Standalone adversarial proofs must be NOT_RUN (received: ${JSON.stringify(standaloneAudit)})`);
+  }
+
+  // Scroll to proof-box and take canonical standalone screenshot
+  await client.eval("document.querySelector('.proof-box').scrollIntoView({ behavior: 'instant', block: 'center' })");
+  await delay(300);
+  await client.screenshot('standalone-proof-panel-not-run.png');
+  // Scroll back to top
+  await client.eval("window.scrollTo(0, 0)");
+  await delay(200);
+
+  // -------------------------------------------------------------------------
   // CENÁRIO 1: Leitura completa (MET-19, período, fontes, cobertura completa)
   // -------------------------------------------------------------------------
   console.log('\n--- Executando Cenário 1: Leitura completa ---');
@@ -1147,6 +1210,7 @@ async function runTests() {
     allPositivePass &&
     allNegativePass &&
     allAdversarialPass &&
+    standalonePass &&
     selfCheckPass &&
     mobilePass &&
     client.errors.length === 0
@@ -1158,6 +1222,7 @@ async function runTests() {
   console.log(` Positive Proofs (P1-P3): ${allPositivePass ? 'ALL PASS' : 'FAIL'}`);
   console.log(` Negative Proofs (N1-N7): ${allNegativePass ? 'ALL PASS' : 'FAIL'}`);
   console.log(` Adversarial Proofs (A1-A6): ${allAdversarialPass ? 'ALL PASS' : 'FAIL'}`);
+  console.log(` Standalone Panel Audit (R2-F01): ${standalonePass ? 'PASS (NOT_RUN verificado)' : 'FAIL'}`);
   console.log(` Mutation Self-Check: ${selfCheckPass ? 'PASS' : 'FAIL'}`);
   console.log(` Mobile Overflow: ${mobilePass ? 'NONE (PASS)' : 'OVERFLOW FAIL'}`);
   console.log(` Erros Console/Runtime: ${client.errors.length}`);
@@ -1166,7 +1231,7 @@ async function runTests() {
   // Write structured JSON log
   const logData = {
     timestamp: new Date().toISOString(),
-    suite: 'UX-CW04 WI01 Management Decision & Adversarial Test Suite (R1 Hardened)',
+    suite: 'UX-CW04 WI01 Management Decision & Adversarial Test Suite (R2 Hardened)',
     summary: {
       totalScenarios,
       passedScenarios,
@@ -1174,11 +1239,13 @@ async function runTests() {
       positiveProofsCount: Object.values(positiveProofs).filter(p => p.pass).length,
       negativeProofsCount: Object.values(negativeProofs).filter(p => p.pass).length,
       adversarialProofsCount: Object.values(adversarialProofs).filter(p => p.pass).length,
+      standalonePanelAudit: standalonePass ? 'PASS' : 'FAIL',
       mutationSelfCheck: selfCheckPass ? 'PASS' : 'FAIL',
       mobileHorizontalOverflow: mobilePass ? 'NONE' : 'DETECTED',
       jsConsoleErrors: client.errors.length,
       status: overallSuccess ? 'ALL_PASS' : 'FAIL'
     },
+    standaloneAudit,
     positiveProofs,
     negativeProofs,
     adversarialProofs,
@@ -1201,6 +1268,7 @@ async function runTests() {
     'test-runner.js',
     'evidence/test_execution_log.json',
     'evidence/EVIDENCE_REPORT.md',
+    'evidence/screenshots/standalone-proof-panel-not-run.png',
     'evidence/screenshots/ges-001-leitura-completa.png',
     'evidence/screenshots/ges-001-cobertura-parcial.png',
     'evidence/screenshots/ges-002-meta-demo-061-valida.png',
@@ -1245,10 +1313,10 @@ function writeEvidenceReport(logData) {
   const negRows = Object.values(logData.negativeProofs).map(formatProofRow).join('\n');
   const advRows = Object.values(logData.adversarialProofs).map(formatProofRow).join('\n');
 
-  const report = `# Dossiê de Evidências — UX-CW04 WI01: Leitura, Decisão e Plano (R1 Hardened)
+  const report = `# Dossiê de Evidências — UX-CW04 WI01: Leitura, Decisão e Plano (R2 Integridade)
 **Projeto:** Toca do Peixe  
 **Frente:** CW-04 — Decisão Gerencial / Gestão  
-**Work Item:** CW04-WI01 — Leitura, decisão e plano (R1)  
+**Work Item:** CW04-WI01 — Leitura, decisão e plano (R2 — Correção de Integridade do Painel)  
 **Data:** 01/10/2026  
 **Status do Executor:** DONE (Pronto para re-review independente do ChatGPT)  
 **Governança:** DONE ≠ APPROVED
@@ -1294,21 +1362,28 @@ function writeEvidenceReport(logData) {
 
 ---
 
-## 4. Auditoria de Provas Especiais Endurecidas (R1)
+## 4. Auditoria de Provas Especiais Endurecidas (R1 & R2)
 
-### Positive Proofs (P1-P3)
+### 4.1 Standalone Proof Panel Integrity (R2-F01)
+
+- **A1, A2, A3, A4, A6 (Adversariais CDP):** Inicializados e renderizados estritamente como **\`NOT_RUN\`** em modo standalone (com badge visual neutro, ícone \`○\` e tag de origem \`harness\`).
+- **A5 (Setters Proibidos):** Avaliado factual e dinamicamente em tempo real (\`PASS\` com tag de origem \`runtime\`).
+- **Zero PASS Hardcoded:** Removidos integralmente todos os booleanos pré-definidos do invariant engine.
+- **Screenshot Canônica:** [standalone-proof-panel-not-run.png](screenshots/standalone-proof-panel-not-run.png)
+
+### 4.2 Positive Proofs (P1-P3)
 
 | ID | Requisito / Claim | Fato Observado / Evidência | Esperado | Atual | Status |
 |---|---|---|---|---|:---:|
 ${posRows}
 
-### Negative Proofs (N1-N7)
+### 4.3 Negative Proofs (N1-N7)
 
 | ID | Requisito / Claim | Fato Observado / Evidência | Esperado | Atual | Status |
 |---|---|---|---|---|:---:|
 ${negRows}
 
-### Adversarial Proofs (A1-A6)
+### 4.4 Adversarial Proofs Autorizados pelo Harness CDP (A1-A6)
 
 | ID | Tentativa Adversarial / Claim | Injeção & Fato Observado | Comportamento Esperado | Resultado Real | Status |
 |---|---|---|---|---|:---:|
@@ -1320,7 +1395,7 @@ ${advRows}
 
 - **Falso Claim Detectado:** PASS (Claim declarativo 'PASS' rejeitado quando fato de origem foi corrompido).
 - **Mutation Test:** PASS (Avaliador factual retornou false sob injeção de fato inválido e true após restauração).
-- **Exit-Code Gate:** Conectado a todos os gates (cenários, P, N, A, self-check, mobile e console).
+- **Exit-Code Gate:** Conectado a todos os gates (cenários, P, N, A, standalone audit, self-check, mobile e console).
 
 ---
 

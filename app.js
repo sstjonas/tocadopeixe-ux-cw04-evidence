@@ -305,22 +305,22 @@
 
     // Invariant Verification Log
     invariants: {
-      p1: false,
-      p2: false,
-      p3: false,
-      n1: false,
-      n2: false,
-      n3: false,
-      n4: false,
-      n5: false,
-      n6: false,
-      n7: false,
-      a1: false,
-      a2: false,
-      a3: false,
-      a4: false,
-      a5: false,
-      a6: false
+      p1: { status: 'NOT_RUN', source: 'runtime', observation: null, evaluatedAt: null },
+      p2: { status: 'NOT_RUN', source: 'runtime', observation: null, evaluatedAt: null },
+      p3: { status: 'NOT_RUN', source: 'runtime', observation: null, evaluatedAt: null },
+      n1: { status: 'NOT_RUN', source: 'runtime', observation: null, evaluatedAt: null },
+      n2: { status: 'NOT_RUN', source: 'runtime', observation: null, evaluatedAt: null },
+      n3: { status: 'NOT_RUN', source: 'runtime', observation: null, evaluatedAt: null },
+      n4: { status: 'NOT_RUN', source: 'runtime', observation: null, evaluatedAt: null },
+      n5: { status: 'NOT_RUN', source: 'runtime', observation: null, evaluatedAt: null },
+      n6: { status: 'NOT_RUN', source: 'runtime', observation: null, evaluatedAt: null },
+      n7: { status: 'NOT_RUN', source: 'runtime', observation: null, evaluatedAt: null },
+      a1: { status: 'NOT_RUN', source: 'harness', observation: 'Requer injeção deliberada de fato corrompido via CDP', evaluatedAt: null },
+      a2: { status: 'NOT_RUN', source: 'harness', observation: 'Requer injeção de spoof DOM via CDP', evaluatedAt: null },
+      a3: { status: 'NOT_RUN', source: 'harness', observation: 'Requer mutação de fato de observação via CDP', evaluatedAt: null },
+      a4: { status: 'NOT_RUN', source: 'harness', observation: 'Requer injeção de fixture sem evidência via CDP', evaluatedAt: null },
+      a5: { status: 'NOT_RUN', source: 'runtime', observation: null, evaluatedAt: null },
+      a6: { status: 'NOT_RUN', source: 'harness', observation: 'Requer validação sob cenário com unidade sem fonte', evaluatedAt: null }
     }
   };
 
@@ -485,7 +485,12 @@
       readingMet19.definitionVersion === '1.0.0' &&
       readingMet19.sourceRef === 'AUD-DEMO-061'
     );
-    results.p1 = p1Pass;
+    results.p1 = {
+      status: p1Pass ? 'PASS' : 'FAIL',
+      source: 'runtime',
+      observation: `Fórmula v${readingMet19.definitionVersion} rastreada até AUD-DEMO-061`,
+      evaluatedAt: new Date().toISOString()
+    };
 
     // P2: Cadeia de plano completa (R1-F07: STRICT REQUIREMENT: OutcomeObservation REAL)
     // Achado/Origem -> Plano -> Ação -> Evidence -> Verification -> Outcome
@@ -511,7 +516,12 @@
       State.actionPlan.verifications['VER-ACT-01'].status === 'aceita' &&
       hasValidOutcomes === true
     );
-    results.p2 = p2Pass;
+    results.p2 = {
+      status: (hasValidOutcomes && p2Pass) ? 'PASS' : (State.actionPlan.outcomes.length === 0 ? 'NOT_RUN' : 'FAIL'),
+      source: 'runtime',
+      observation: hasValidOutcomes ? 'Cadeia completa 6/6 elos verificada com OutcomeObservation formal' : 'Aguardando ciclo de governança e outcome posterior (Cenários 9 e 12)',
+      evaluatedAt: hasValidOutcomes ? new Date().toISOString() : null
+    };
 
     // P3: Meta versionada
     // v1 preservada ao propor v2, histórico não reescrito
@@ -519,7 +529,12 @@
       State.metaBudget.version === '1.0.0' ||
       (State.metaBudget.version === '2.0.0' && State.metaBudget.history.length > 0 && State.metaBudget.history[0].version === '1.0.0')
     );
-    results.p3 = p3Pass;
+    results.p3 = {
+      status: p3Pass ? 'PASS' : 'FAIL',
+      source: 'runtime',
+      observation: `Versão ${State.metaBudget.version} com histórico íntegro`,
+      evaluatedAt: new Date().toISOString()
+    };
 
     // N1: Cobertura parcial != zero
     // Unidade faltante não vira zero no consolidado
@@ -530,7 +545,12 @@
        State.sourceCoverage.unitObservations[State.sourceCoverage.missingUnits[0]] &&
        State.sourceCoverage.unitObservations[State.sourceCoverage.missingUnits[0]].value !== 0)
     );
-    results.n1 = n1Pass;
+    results.n1 = {
+      status: n1Pass ? 'PASS' : 'FAIL',
+      source: 'runtime',
+      observation: State.sourceCoverage.status === 'parcial' ? 'Unidade faltante não convertida em zero' : 'Cobertura completa',
+      evaluatedAt: new Date().toISOString()
+    };
 
     // N2: Denominador zero = Não aplicável (nunca 0%)
     const readingMet20 = calculateManagementReading('MET-20');
@@ -539,14 +559,24 @@
       readingMet20.displayValue === 'Não aplicável' &&
       readingMet20.displayValue !== '0%'
     );
-    results.n2 = n2Pass;
+    results.n2 = {
+      status: n2Pass ? 'PASS' : 'FAIL',
+      source: 'runtime',
+      observation: `Denominador zero tratado como "${readingMet20.displayValue}"`,
+      evaluatedAt: new Date().toISOString()
+    };
 
     // N3: Períodos incompatíveis bloqueiam comparação
     const n3Pass = (
       State.periodComparison.arePeriodsCompatible ||
       State.periodComparison.incompatibilityReason !== null
     );
-    results.n3 = n3Pass;
+    results.n3 = {
+      status: n3Pass ? 'PASS' : 'FAIL',
+      source: 'runtime',
+      observation: State.periodComparison.arePeriodsCompatible ? 'Períodos compatíveis' : `Comparação bloqueada: ${State.periodComparison.incompatibilityReason}`,
+      evaluatedAt: new Date().toISOString()
+    };
 
     // N4: Composição financeira com overlap desconhecido não calcula residual
     const budgetComp = calculateBudgetComposition();
@@ -554,7 +584,12 @@
       !State.metaBudget.overlapUnknown ||
       (budgetComp.residual === null && budgetComp.residualLabel === 'Conferir composição')
     );
-    results.n4 = n4Pass;
+    results.n4 = {
+      status: n4Pass ? 'PASS' : 'FAIL',
+      source: 'runtime',
+      observation: State.metaBudget.overlapUnknown ? 'Overlap desconhecido bloqueia cálculo de residual' : 'Bases disjuntas comprovadas',
+      evaluatedAt: new Date().toISOString()
+    };
 
     // N5: Ação executada sem evidence não verifica resultado (R1-F06)
     const executedWithoutEvidence = State.actionPlan.actions.filter(a => a.status === 'executada' && !a.evidenceRef);
@@ -566,7 +601,12 @@
       return State.actionPlan.outcomes.some(o => o.actionRef === a.id);
     });
     const n5Pass = !hasInvalidVerification && !hasInvalidOutcome;
-    results.n5 = n5Pass;
+    results.n5 = {
+      status: n5Pass ? 'PASS' : 'FAIL',
+      source: 'runtime',
+      observation: n5Pass ? 'Nenhuma ação sem evidência transitou para verificação ou outcome' : 'Ação sem evidência induziu verificação/outcome indevido',
+      evaluatedAt: new Date().toISOString()
+    };
 
     // N6: Reunião encerrada não fecha plano
     const n6Pass = (
@@ -574,7 +614,12 @@
       (State.actionPlan.status === 'EM_ANDAMENTO' &&
        State.actionPlan.actions.some(a => a.status === 'pendente'))
     );
-    results.n6 = n6Pass;
+    results.n6 = {
+      status: n6Pass ? 'PASS' : 'FAIL',
+      source: 'runtime',
+      observation: State.actionPlan.meeting.status === 'encerrada' ? 'Reunião encerrada preserva plano e ações pendentes' : 'Reunião ativa',
+      evaluatedAt: new Date().toISOString()
+    };
 
     // N7: Responsável sem acesso não recebe atribuição (R1-F05: Derivado do evento factual de segurança)
     const sec = State.lastSecurityEvent;
@@ -589,29 +634,61 @@
       targetAct.assignee === 'Engenheiro de Manutenção' &&
       targetAct.assignee !== 'Prestador Sem Escopo'
     );
-    results.n7 = n7Pass;
+    results.n7 = {
+      status: sec !== null ? (n7Pass ? 'PASS' : 'FAIL') : 'NOT_RUN',
+      source: 'runtime',
+      observation: sec ? `Tentativa de atribuição a "${sec.attemptedActor}" recusada: ${sec.rejectionReason}` : 'Aguardando simulação de atribuição sem escopo (Cenário 11)',
+      evaluatedAt: sec ? new Date().toISOString() : null
+    };
 
-    // A1: PASS autodeclarado não vale (Avaliado dinamicamente via mutação deliberada pelo runner)
-    results.a1 = true;
+    // Adversarial proofs (A1, A2, A3, A4, A6)
+    // R2-F01: Proofs dependentes de injeção/mutação via harness autônomo nascem como NOT_RUN.
+    // Proibido qualquer autodeclaração ou hardcode de PASS na ausência de execução pelo harness.
+    results.a1 = {
+      status: 'NOT_RUN',
+      source: 'harness',
+      observation: 'Ensaio adversarial de autodeclaração falsa (requer injeção de fato corrompido via harness CDP)',
+      evaluatedAt: null
+    };
 
-    // A2: Badge hardcoded não mascara SourceCoverage factual (Avaliado dinamicamente via spoof de DOM)
-    results.a2 = true;
+    results.a2 = {
+      status: 'NOT_RUN',
+      source: 'harness',
+      observation: 'Ensaio adversarial de spoofing visual no DOM (requer injeção de badge falso via harness CDP)',
+      evaluatedAt: null
+    };
 
-    // A3: Valor sem provenance recalcula (Avaliado dinamicamente via mutação de fato)
-    results.a3 = true;
+    results.a3 = {
+      status: 'NOT_RUN',
+      source: 'harness',
+      observation: 'Ensaio adversarial de mutação de observação operacional (requer harness CDP)',
+      evaluatedAt: null
+    };
 
-    // A4: Action status done forçado sem evidence não prova resultado (Avaliado dinamicamente via injeção no state)
-    results.a4 = true;
+    results.a4 = {
+      status: 'NOT_RUN',
+      source: 'harness',
+      observation: 'Ensaio adversarial de injeção de ação fake sem evidência (requer harness CDP)',
+      evaluatedAt: null
+    };
 
-    // A5: Setter gerencial proibido
-    // Compara o snapshot dos fatos operacionais atuais com o snapshot inicial
+    // A5: Setter gerencial proibido sobre fatos operacionais (avaliado factual/dinamicamente em tempo real)
     const a5Pass = (
       JSON.stringify(State.operationalFacts) === JSON.stringify(State.operationalFactsInitialSnapshot)
     );
-    results.a5 = a5Pass;
+    results.a5 = {
+      status: a5Pass ? 'PASS' : 'FAIL',
+      source: 'runtime',
+      observation: a5Pass ? 'Fatos operacionais íntegros e idênticos ao snapshot inicial' : 'Mutação indevida detectada em fatos operacionais',
+      evaluatedAt: new Date().toISOString()
+    };
 
-    // A6: Unidade sem fonte não entra como zero (Avaliado dinamicamente via cálculo + state + DOM)
-    results.a6 = true;
+    results.a6 = {
+      status: 'NOT_RUN',
+      source: 'harness',
+      observation: 'Ensaio adversarial de ausência de fonte sem zero fabricado (requer validação dinâmica via harness CDP)',
+      evaluatedAt: null
+    };
 
     State.invariants = results;
     return results;
@@ -1537,11 +1614,37 @@
     ];
 
     container.innerHTML = items.map(it => {
-      const isPass = inv[it.key];
+      const proof = inv ? inv[it.key] : null;
+      const status = (proof && typeof proof === 'object')
+        ? (proof.status || 'NOT_RUN')
+        : (proof === true ? 'PASS' : (proof === false ? 'FAIL' : 'NOT_RUN'));
+
+      let badgeClass = 'not-run';
+      let icon = '○';
+      let statusLabel = 'NOT_RUN';
+
+      if (status === 'PASS') {
+        badgeClass = 'pass';
+        icon = '✓';
+        statusLabel = 'PASS';
+      } else if (status === 'FAIL') {
+        badgeClass = 'fail';
+        icon = '✗';
+        statusLabel = 'FAIL';
+      } else {
+        badgeClass = 'not-run';
+        icon = '○';
+        statusLabel = 'NOT_RUN';
+      }
+
+      const source = (proof && proof.source) ? proof.source : (it.key.startsWith('a') && it.key !== 'a5' ? 'harness' : 'runtime');
+      const sourceTag = `<span class="proof-source-tag">${source}</span>`;
+
       return `
-        <li class="proof-item ${isPass ? 'pass' : 'fail'}" id="invariant-check-${it.key}">
-          <span>${isPass ? '✓' : '✗'}</span>
-          <span>${it.label}: <strong>${isPass ? 'PASS' : 'FAIL'}</strong></span>
+        <li class="proof-item ${badgeClass}" id="invariant-check-${it.key}">
+          <span>${icon}</span>
+          <span>${it.label}: <strong>${statusLabel}</strong></span>
+          ${sourceTag}
         </li>
       `;
     }).join('');
