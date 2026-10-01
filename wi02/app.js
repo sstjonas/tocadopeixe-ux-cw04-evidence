@@ -700,6 +700,245 @@
     };
   }
 
+  /**
+   * Semantic Runtime Invariant Evaluator for Calendar Proposal (P1 / Operating Model v2.4 / R3-F01).
+   * Validates structural and semantic decoupling between active CalendarVersion and CalendarProposal
+   * without hardcoding specific operating hours (e.g. 18-23 or 19-23).
+   */
+  function evaluateSemanticCalendarProposalInvariant(calendarState) {
+    const cal = calendarState || State.calendar;
+    if (!cal || typeof cal !== 'object') {
+      return { pass: false, reasons: ['Calendar state ausente ou inválido'] };
+    }
+
+    const reasons = [];
+
+    // 1. CalendarVersion existe e possui id, version, status coerente, start/end
+    const cv = cal.currentVersion;
+    if (!cv || typeof cv !== 'object') {
+      reasons.push('CalendarVersion vigente ausente');
+    } else {
+      if (!cv.id || typeof cv.id !== 'string') reasons.push('CalendarVersion.id ausente ou inválido');
+      if (!cv.version || typeof cv.version !== 'string') reasons.push('CalendarVersion.version ausente ou inválido');
+      if (!cv.status || typeof cv.status !== 'string' || !['vigente', 'ativo', 'historico'].includes(cv.status)) {
+        reasons.push('CalendarVersion.status ausente ou incoerente');
+      }
+      if (!cv.startTime || typeof cv.startTime !== 'string' || !cv.endTime || typeof cv.endTime !== 'string') {
+        reasons.push('CalendarVersion startTime/endTime ausentes ou inválidos');
+      }
+    }
+
+    // 2. CalendarProposal existe e possui id, proposedVersion, proposedStart/end
+    const prop = cal.proposal;
+    if (!prop || typeof prop !== 'object') {
+      reasons.push('CalendarProposal ausente');
+    } else {
+      if (!prop.id || typeof prop.id !== 'string') reasons.push('CalendarProposal.id ausente ou inválido');
+      if (!prop.proposedVersion || typeof prop.proposedVersion !== 'string') {
+        reasons.push('CalendarProposal.proposedVersion ausente ou inválida');
+      }
+      if (!prop.proposedStartTime || typeof prop.proposedStartTime !== 'string' ||
+          !prop.proposedEndTime || typeof prop.proposedEndTime !== 'string') {
+        reasons.push('CalendarProposal proposedStartTime/proposedEndTime ausentes ou inválidos');
+      }
+    }
+
+    // 3. currentVersion.id != proposal.id
+    if (cv && prop && cv.id === prop.id) {
+      reasons.push('currentVersion e proposal compartilham o mesmo id');
+    }
+
+    // 4. proposta não substitui a versão vigente apenas por existir
+    if (cv && prop) {
+      if (cv.id === prop.id || cv.version === prop.proposedVersion) {
+        reasons.push('Proposta sobrescreveu indevidamente a versão vigente');
+      }
+    }
+
+    // 5. commitments permanecem referências separadas
+    if (!cal.commitments || typeof cal.commitments !== 'object') {
+      reasons.push('Commitments ausentes ou estrutura inválida');
+    }
+
+    // 6. ImpactAssessment, quando existente, possui provenance coerente
+    const ia = cal.impactAssessment;
+    if (ia && typeof ia === 'object') {
+      if (!ia.baseCalendarVersionId || typeof ia.baseCalendarVersionId !== 'string') {
+        reasons.push('ImpactAssessment.baseCalendarVersionId ausente');
+      }
+      if (!ia.baseCalendarVersion || typeof ia.baseCalendarVersion !== 'string') {
+        reasons.push('ImpactAssessment.baseCalendarVersion ausente');
+      }
+      if (!ia.proposalId || typeof ia.proposalId !== 'string') {
+        reasons.push('ImpactAssessment.proposalId ausente');
+      }
+      if (!ia.proposalVersion || typeof ia.proposalVersion !== 'string') {
+        reasons.push('ImpactAssessment.proposalVersion ausente');
+      }
+    }
+
+    return {
+      pass: reasons.length === 0,
+      reasons
+    };
+  }
+
+  /**
+   * Semantic Runtime Invariant Evaluator for Scenario Versioning (P2 / Operating Model v2.4 / R3-F01).
+   * Validates structure, transparency, assumption types, and derived math without hardcoding
+   * specific figures (e.g. 4800, -3200, 20 months).
+   */
+  function evaluateSemanticScenarioInvariant(scenarioState) {
+    const scn = scenarioState || State.scenario;
+    if (!scn || typeof scn !== 'object') {
+      return { pass: false, reasons: ['Scenario state ausente ou inválido'] };
+    }
+
+    const reasons = [];
+
+    // 1. ScenarioDefinition / ScenarioVersion identificáveis (id, version)
+    if (!scn.id || typeof scn.id !== 'string') reasons.push('Scenario.id ausente ou inválido');
+    if (!scn.version || typeof scn.version !== 'string') reasons.push('Scenario.version ausente ou inválida');
+
+    // 2. Status explícito como simulação/hipótese
+    const validStatuses = ['SIMULACAO_HIPOTESE', 'simulacao', 'hipotese', 'rascunho'];
+    if (!scn.status || !validStatuses.includes(scn.status)) {
+      reasons.push(`Scenario.status deve ser explícito como simulação/hipótese (encontrado: ${scn.status})`);
+    }
+
+    // 3. Assumptions possuem id, name, unit, status, origin, e value quando conhecido
+    if (!scn.assumptions || typeof scn.assumptions !== 'object' || Object.keys(scn.assumptions).length === 0) {
+      reasons.push('Scenario.assumptions ausentes ou vazias');
+    } else {
+      for (const [key, asm] of Object.entries(scn.assumptions)) {
+        if (!asm.id) reasons.push(`Premissa ${key}: id ausente`);
+        if (!asm.name) reasons.push(`Premissa ${key}: name ausente`);
+        if (!asm.unit) reasons.push(`Premissa ${key}: unit ausente`);
+        if (!asm.status || !['known', 'estimated', 'unknown'].includes(asm.status)) {
+          reasons.push(`Premissa ${key}: status inválido (${asm.status})`);
+        }
+        if (!asm.origin) reasons.push(`Premissa ${key}: origin ausente`);
+        if (asm.status !== 'unknown' && (asm.value === undefined || asm.value === null || typeof asm.value !== 'number')) {
+          reasons.push(`Premissa ${key}: value numérico ausente para status conhecido`);
+        }
+      }
+    }
+
+    // 4. Limitações metodológicas explícitas
+    if (!Array.isArray(scn.limitations) || scn.limitations.length === 0) {
+      reasons.push('Limitações metodológicas do cenário ausentes ou vazias');
+    }
+
+    // 5. Current version não reescreve history
+    if (Array.isArray(scn.history)) {
+      const historyContainsCurrent = scn.history.some(h => h.version === scn.version);
+      if (historyContainsCurrent) {
+        reasons.push(`Versão atual ${scn.version} conflita com versão existente no histórico arquivado`);
+      }
+    }
+
+    // 6. Projeção: se calculável, deriva das premissas atuais; se unknown, estado não calculável é válido
+    const proj = calculateScenarioProjection(scn);
+    if (proj.isCalculable) {
+      const inv = scn.assumptions['ASM-01'] ? scn.assumptions['ASM-01'].value : null;
+      const sav = scn.assumptions['ASM-02'] ? scn.assumptions['ASM-02'].value : null;
+      const hor = scn.assumptions['ASM-03'] ? scn.assumptions['ASM-03'].value : null;
+      if (inv !== null && sav !== null && hor !== null) {
+        const expectedGross = sav * hor;
+        const expectedNet = expectedGross - inv;
+        const expectedPayback = sav > 0 ? (inv / sav) : null;
+        if (proj.grossBenefit !== expectedGross || proj.netDifference !== expectedNet || proj.simplePaybackMonths !== expectedPayback) {
+          reasons.push('Projeção calculada não confere com premissas declaradas');
+        }
+      }
+    } else {
+      if (proj.grossBenefit !== null || proj.netDifference !== null) {
+        reasons.push('Projeção não calculável deve manter benefício e resultado nulos');
+      }
+    }
+
+    return {
+      pass: reasons.length === 0,
+      isCalculable: proj.isCalculable,
+      reasons
+    };
+  }
+
+  /**
+   * Semantic Runtime Invariant Evaluator for Adoption Definition & Metrics (P3 / Operating Model v2.4 / R3-F01).
+   * Validates non-negative populations, separate dimensions, explicit exclusions, and correct rate derivation.
+   * Handles denominator zero (eligible = 0) as a legitimate "Não aplicável" state without failing.
+   */
+  function evaluateSemanticAdoptionInvariant(adoptionState) {
+    const adp = adoptionState || State.adoption;
+    if (!adp || typeof adp !== 'object') {
+      return { pass: false, reasons: ['Adoption state ausente ou inválido'] };
+    }
+
+    const reasons = [];
+
+    // 1. AdoptionDefinition existe e definition está explícita
+    if (!adp.id || typeof adp.id !== 'string') reasons.push('Adoption.id ausente');
+    if (!adp.definition || typeof adp.definition !== 'string' || adp.definition.trim().length === 0) {
+      reasons.push('Adoption.definition ausente ou vazia');
+    }
+
+    // 2. eligiblePopulation é número finito >= 0
+    if (typeof adp.eligiblePopulation !== 'number' || isNaN(adp.eligiblePopulation) || adp.eligiblePopulation < 0) {
+      reasons.push('eligiblePopulation deve ser número finito >= 0');
+    }
+
+    // 3. completedFlow >= 0, assistedOutside >= 0, evidenceGaps >= 0
+    if (typeof adp.completedFlow !== 'number' || adp.completedFlow < 0) {
+      reasons.push('completedFlow deve ser >= 0');
+    }
+    if (typeof adp.assistedOutside !== 'number' || adp.assistedOutside < 0) {
+      reasons.push('assistedOutside deve ser >= 0');
+    }
+    if (typeof adp.evidenceGaps !== 'number' || adp.evidenceGaps < 0) {
+      reasons.push('evidenceGaps deve ser >= 0');
+    }
+
+    // 4. completedFlow cannot exceed eligiblePopulation
+    if (adp.eligiblePopulation > 0 && adp.completedFlow > adp.eligiblePopulation) {
+      reasons.push(`completedFlow (${adp.completedFlow}) não pode exceder eligiblePopulation (${adp.eligiblePopulation})`);
+    }
+
+    // 5. exclusions estão explícitas
+    if (!Array.isArray(adp.exclusions) || adp.exclusions.length === 0) {
+      reasons.push('Exclusões formais do denominador ausentes ou vazias');
+    }
+
+    // 6. coverage está explícita
+    if (!adp.sourceCoverage || typeof adp.sourceCoverage !== 'object' || !adp.sourceCoverage.status) {
+      reasons.push('sourceCoverage ausente ou sem status');
+    }
+
+    // 7. Métricas computadas
+    const adpMet = calculateAdoptionMetrics(adp);
+
+    if (adp.eligiblePopulation > 0) {
+      const expectedRate = Number(((adp.completedFlow / adp.eligiblePopulation) * 100).toFixed(1));
+      if (adpMet.ratePct !== expectedRate) {
+        reasons.push(`ratePct (${adpMet.ratePct}) diverge do cálculo formal (${expectedRate})`);
+      }
+      const isCoveragePartial = adp.sourceCoverage && adp.sourceCoverage.status === 'parcial';
+      if (isCoveragePartial && adpMet.generalizationAllowed !== false) {
+        reasons.push('Cobertura parcial deve bloquear generalização');
+      }
+    } else if (adp.eligiblePopulation === 0) {
+      if (!adpMet.isNotApplicable || adpMet.ratePct !== null || adpMet.rateFraction !== null) {
+        reasons.push('Denominador zero deve ter isNotApplicable=true e ratePct/rateFraction nulos');
+      }
+    }
+
+    return {
+      pass: reasons.length === 0,
+      metrics: adpMet,
+      reasons
+    };
+  }
+
   // =========================================================================
   // 4. INVARIANT ENGINE & AUDIT
   // =========================================================================
@@ -707,61 +946,50 @@
   function runAllInvariantAudits() {
     const results = {};
 
-    // P1: CalendarProposal preserva CalendarVersion vigente e compromissos existentes
+    // P1: CalendarProposal preserva CalendarVersion vigente e compromissos existentes (Semantic Invariant)
     const cal = State.calendar;
-    const currentIs1823 = cal.currentVersion.startTime === '18:00' && cal.currentVersion.endTime === '23:00';
-    const propIs1923 = cal.proposal.proposedStartTime === '19:00' && cal.proposal.proposedEndTime === '23:00';
-    const proposalIsDistinct = cal.currentVersion.id !== cal.proposal.id;
-    const hasExistingDeps = cal.commitments['RES-DEMO-062'] && cal.commitments['PRO-DEMO-062'];
-    const p1Pass = currentIs1823 && propIs1923 && proposalIsDistinct && !!hasExistingDeps;
-
+    const p1Eval = evaluateSemanticCalendarProposalInvariant(cal);
     results.p1 = {
-      status: p1Pass ? 'PASS' : 'FAIL',
+      status: p1Eval.pass ? 'PASS' : 'FAIL',
       source: 'runtime',
-      observation: `Versão vigente ${cal.currentVersion.startTime}–${cal.currentVersion.endTime} preservada; proposta distinta com dependências ativas`,
+      observation: p1Eval.pass
+        ? `Versão vigente ${cal.currentVersion.version} (${cal.currentVersion.startTime}–${cal.currentVersion.endTime}) preservada sob proposta ${cal.proposal.proposedVersion}; separação canônica e proveniência intactas`
+        : `Violação semântica em P1: ${p1Eval.reasons.join('; ')}`,
       evaluatedAt: new Date().toISOString()
     };
 
-    // P2: ScenarioVersion é rastreável, baseada exclusivamente em premissas e versionada
+    // P2: ScenarioVersion é rastreável, baseada exclusivamente em premissas e versionada (Semantic Invariant)
     const scn = State.scenario;
-    const proj = calculateScenarioProjection(scn);
-    const p2Pass = (
-      scn.id === 'CEN-DEMO-061' &&
-      scn.status === 'SIMULACAO_HIPOTESE' &&
-      scn.limitations.length >= 5 &&
-      (!proj.isCalculable || (proj.grossBenefit === 4800 && proj.netDifference === -3200 && proj.simplePaybackMonths === 20))
-    );
-
+    const p2Eval = evaluateSemanticScenarioInvariant(scn);
     results.p2 = {
-      status: p2Pass ? 'PASS' : 'FAIL',
+      status: p2Eval.pass ? 'PASS' : 'FAIL',
       source: 'runtime',
-      observation: `Cenário ${scn.version} rotulado como hipótese com limitações explícitas`,
+      observation: p2Eval.pass
+        ? `Cenário ${scn.id} v${scn.version} rotulado como hipótese com premissas tipadas, limitações explícitas e cálculo derivado`
+        : `Violação semântica em P2: ${p2Eval.reasons.join('; ')}`,
       evaluatedAt: new Date().toISOString()
     };
 
-    // P3: AdoptionDefinition possui população elegível, denominador e exclusions explícitas
+    // P3: AdoptionDefinition possui população elegível, denominador e exclusions explícitas (Semantic Invariant)
     const adp = State.adoption;
-    const adpMet = calculateAdoptionMetrics(adp);
-    const p3Pass = (
-      adp.eligiblePopulation === 20 &&
-      adp.completedFlow === 15 &&
-      adp.assistedOutside === 3 &&
-      adp.evidenceGaps === 2 &&
-      adp.exclusions.length >= 2 &&
-      adpMet.ratePct === 75.0
-    );
-
+    const p3Eval = evaluateSemanticAdoptionInvariant(adp);
     results.p3 = {
-      status: p3Pass ? 'PASS' : 'FAIL',
+      status: p3Eval.pass ? 'PASS' : 'FAIL',
       source: 'runtime',
-      observation: `População elegível: 20, Concluídas: 15 (75%), Assistidas (3) e Gaps (2) separados, exclusões explícitas`,
+      observation: p3Eval.pass
+        ? (adp.eligiblePopulation === 0
+            ? 'Denominador zero tratado legitimamente como Não Aplicável sob Regra V6 (dimensões separadas e exclusões explícitas)'
+            : `População elegível: ${adp.eligiblePopulation}, Concluídas: ${adp.completedFlow} (${p3Eval.metrics.ratePct}%), dimensões separadas e exclusões explícitas`)
+        : `Violação semântica em P3: ${p3Eval.reasons.join('; ')}`,
       evaluatedAt: new Date().toISOString()
     };
 
-    // N1: Salvar proposta não aplica calendário na versão vigente
+    // N1: Salvar proposta não aplica calendário na versão vigente (Context-Safe)
     const n1Pass = (
       cal.proposal.status !== 'salva_rascunho' ||
-      (cal.currentVersion.startTime === '18:00' && cal.currentVersion.endTime === '23:00' && cal.currentVersion.status === 'vigente')
+      (cal.currentVersion.status === 'vigente' &&
+       cal.currentVersion.id !== cal.proposal.id &&
+       cal.currentVersion.startTime !== cal.proposal.proposedStartTime)
     );
     results.n1 = {
       status: n1Pass ? 'PASS' : 'FAIL',
@@ -824,6 +1052,7 @@
     };
 
     // N6: Premissa necessária desconhecida impede cálculo (não usa zero silencioso)
+    const proj = calculateScenarioProjection(scn);
     const n6Pass = (
       scn.assumptions['ASM-04'].status !== 'unknown' ||
       (!proj.isCalculable && proj.reason.includes('Não mensurável'))
@@ -847,6 +1076,7 @@
     };
 
     // N8: Adoção parcial não generaliza para o restaurante inteiro
+    const adpMet = calculateAdoptionMetrics(adp);
     const n8Pass = (
       adp.sourceCoverage.status !== 'parcial' ||
       (!adpMet.generalizationAllowed && adpMet.isCoveragePartial)
@@ -1738,6 +1968,9 @@
     verifySaveScenarioSideEffectFree,
     calculateScenarioProjection,
     calculateAdoptionMetrics,
+    evaluateSemanticCalendarProposalInvariant,
+    evaluateSemanticScenarioInvariant,
+    evaluateSemanticAdoptionInvariant,
     runAllInvariantAudits,
     renderApp,
     INITIAL_OPERATIONAL_FACTS,

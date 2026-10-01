@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-01T20:24:09.039Z",
+  "timestamp": "2026-10-01T20:54:47.140Z",
   "suite": "UX-CW04 WI02 Calendar, Scenarios & Adoption Adversarial Test Suite",
   "summary": {
     "totalScenarios": 12,
@@ -8,7 +8,7 @@
     "positiveProofsCount": 3,
     "negativeProofsCount": 8,
     "adversarialProofsCount": 6,
-    "additionalProofsCount": 3,
+    "additionalProofsCount": 4,
     "standaloneTruthfulnessGate": "PASS",
     "mutationSelfCheck": "PASS",
     "mobileHorizontalOverflow": "NONE",
@@ -245,6 +245,62 @@
       "expected": "Gate aceita proposta com base idêntica e rejeita estritamente após mismatch de baseCalendarVersion",
       "actual": "Rejeição obrigatória por version mismatch comprovada com imutabilidade da CalendarVersion",
       "detail": "ImpactAssessment possui acoplamento biunívoco com a CalendarVersion base e a ProposalVersion analisada"
+    },
+    "RS1": {
+      "id": "RS1",
+      "pass": true,
+      "claim": "Runtime review surface é context-safe em estados válidos e detecta violações reais (Operating Model v2.4 / R3)",
+      "observation": "Matriz de 8 estados válidos sem falso FAIL: true, Falhas reais detectadas (Broken P1: true, Broken P2: true, Broken P3: true)",
+      "expected": "Zero falso FAIL em P1, P2 e P3 nos 8 estados operacionais válidos; e detecção estrita de FAIL sob quebra de contrato semântico",
+      "actual": "Context safety comprovado: nenhuma contradição em estados válidos e 100% de sensibilidade a violações semânticas",
+      "detail": "Operating Model v2.4: Separação estrita entre scenario assertion e runtime semantic invariant",
+      "stateMatrix": {
+        "calendarBase": {
+          "p1": "PASS",
+          "p2": "PASS",
+          "p3": "PASS"
+        },
+        "calendarCrossMidnight": {
+          "p1": "PASS",
+          "p2": "PASS",
+          "p3": "PASS"
+        },
+        "scenarioV1": {
+          "p1": "PASS",
+          "p2": "PASS",
+          "p3": "PASS"
+        },
+        "scenarioV2": {
+          "p1": "PASS",
+          "p2": "PASS",
+          "p3": "PASS"
+        },
+        "scenarioUnknown": {
+          "p1": "PASS",
+          "p2": "PASS",
+          "p3": "PASS"
+        },
+        "adoptionBase": {
+          "p1": "PASS",
+          "p2": "PASS",
+          "p3": "PASS"
+        },
+        "adoptionZero": {
+          "p1": "PASS",
+          "p2": "PASS",
+          "p3": "PASS"
+        },
+        "adoptionPartial": {
+          "p1": "PASS",
+          "p2": "PASS",
+          "p3": "PASS"
+        }
+      },
+      "brokenChecks": {
+        "brokenP1Detected": true,
+        "brokenP2Detected": true,
+        "brokenP3Detected": true
+      }
     }
   },
   "selfCheck": {

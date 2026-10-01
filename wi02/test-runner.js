@@ -672,11 +672,13 @@ async function runTests() {
     window.ManagementApp.selectScenario(1);
     const s = window.ManagementApp.getState();
     const cal = s.calendar;
+    const p1Inv = window.ManagementApp.evaluateSemanticCalendarProposalInvariant(cal);
     const pass = Boolean(
       cal.currentVersion.startTime === '18:00' &&
       cal.proposal.proposedStartTime === '19:00' &&
       cal.commitments['RES-DEMO-062'] &&
-      cal.commitments['PRO-DEMO-062']
+      cal.commitments['PRO-DEMO-062'] &&
+      p1Inv.pass === true
     );
     return {
       id: 'P1',
@@ -696,12 +698,14 @@ async function runTests() {
     window.ManagementApp.selectScenario(7);
     const s = window.ManagementApp.getState();
     const proj = window.ManagementApp.calculateScenarioProjection(s.scenario);
+    const p2Inv = window.ManagementApp.evaluateSemanticScenarioInvariant(s.scenario);
     const pass = (
       s.scenario.id === 'CEN-DEMO-061' &&
       s.scenario.status === 'SIMULACAO_HIPOTESE' &&
       proj.grossBenefit === 4800 &&
       proj.netDifference === -3200 &&
-      s.scenario.limitations.length >= 5
+      s.scenario.limitations.length >= 5 &&
+      p2Inv.pass === true
     );
     return {
       id: 'P2',
@@ -721,13 +725,15 @@ async function runTests() {
     window.ManagementApp.selectScenario(11);
     const s = window.ManagementApp.getState();
     const adp = window.ManagementApp.calculateAdoptionMetrics(s.adoption);
+    const p3Inv = window.ManagementApp.evaluateSemanticAdoptionInvariant(s.adoption);
     const pass = (
       adp.eligiblePopulation === 20 &&
       adp.completedFlow === 15 &&
       adp.assistedOutside === 3 &&
       adp.evidenceGaps === 2 &&
       adp.ratePct === 75.0 &&
-      s.adoption.exclusions.length >= 2
+      s.adoption.exclusions.length >= 2 &&
+      p3Inv.pass === true
     );
     return {
       id: 'P3',
@@ -1303,6 +1309,130 @@ async function runTests() {
   console.log(`V1 (${v1Detail.claim}): ${v1Detail.pass ? 'PASS' : 'FAIL'}`);
 
   // -------------------------------------------------------------------------
+  // RS1: Runtime Review Surface Context Safety (Operating Model v2.4 / R3-F01)
+  // -------------------------------------------------------------------------
+  console.log('\n--- Verificando RS1: Review Surface Context Safety ---');
+  const rs1Detail = await client.eval(`(() => {
+    const statesMatrix = {};
+    let allValidPassed = true;
+
+    // Helper to evaluate P1, P2, P3 in active runtime
+    const sampleRuntimeProofs = () => {
+      const audit = window.ManagementApp.runAllInvariantAudits();
+      return {
+        p1: audit.p1.status,
+        p2: audit.p2.status,
+        p3: audit.p3.status
+      };
+    };
+
+    // A. Calendar cenário-base (Scenario 1)
+    window.ManagementApp.selectScenario(1);
+    const stateA = sampleRuntimeProofs();
+    statesMatrix.calendarBase = stateA;
+    if (stateA.p1 === 'FAIL' || stateA.p2 === 'FAIL' || stateA.p3 === 'FAIL') allValidPassed = false;
+
+    // B. Calendar janela transnoite válida (22:00–02:00)
+    window.ManagementApp.selectScenario(1);
+    const s = window.ManagementApp.getState();
+    s.calendar.crossesMidnight = true;
+    s.calendar.currentVersion.startTime = '22:00';
+    s.calendar.currentVersion.endTime = '02:00';
+    const stateB = sampleRuntimeProofs();
+    statesMatrix.calendarCrossMidnight = stateB;
+    if (stateB.p1 === 'FAIL' || stateB.p2 === 'FAIL' || stateB.p3 === 'FAIL') allValidPassed = false;
+
+    // C. Scenario v1 (Scenario 7)
+    window.ManagementApp.selectScenario(7);
+    const stateC = sampleRuntimeProofs();
+    statesMatrix.scenarioV1 = stateC;
+    if (stateC.p1 === 'FAIL' || stateC.p2 === 'FAIL' || stateC.p3 === 'FAIL') allValidPassed = false;
+
+    // D. Scenario v2 (Scenario 9)
+    window.ManagementApp.selectScenario(9);
+    const stateD = sampleRuntimeProofs();
+    statesMatrix.scenarioV2 = stateD;
+    if (stateD.p1 === 'FAIL' || stateD.p2 === 'FAIL' || stateD.p3 === 'FAIL') allValidPassed = false;
+
+    // E. Scenario unknown / Não mensurável (Scenario 8)
+    window.ManagementApp.selectScenario(8);
+    const stateE = sampleRuntimeProofs();
+    statesMatrix.scenarioUnknown = stateE;
+    if (stateE.p1 === 'FAIL' || stateE.p2 === 'FAIL' || stateE.p3 === 'FAIL') allValidPassed = false;
+
+    // F. Adoption 15/20 (Scenario 11)
+    window.ManagementApp.selectScenario(11);
+    const stateF = sampleRuntimeProofs();
+    statesMatrix.adoptionBase = stateF;
+    if (stateF.p1 === 'FAIL' || stateF.p2 === 'FAIL' || stateF.p3 === 'FAIL') allValidPassed = false;
+
+    // G. Adoption denominator zero (eligible = 0)
+    window.ManagementApp.selectScenario(11);
+    s.adoption.eligiblePopulation = 0;
+    s.adoption.completedFlow = 0;
+    s.adoption.assistedOutside = 0;
+    s.adoption.evidenceGaps = 0;
+    const stateG = sampleRuntimeProofs();
+    statesMatrix.adoptionZero = stateG;
+    if (stateG.p1 === 'FAIL' || stateG.p2 === 'FAIL' || stateG.p3 === 'FAIL') allValidPassed = false;
+
+    // H. Adoption coverage parcial (Scenario 12)
+    window.ManagementApp.selectScenario(12);
+    const stateH = sampleRuntimeProofs();
+    statesMatrix.adoptionPartial = stateH;
+    if (stateH.p1 === 'FAIL' || stateH.p2 === 'FAIL' || stateH.p3 === 'FAIL') allValidPassed = false;
+
+    // Restore state to Scenario 1
+    window.ManagementApp.selectScenario(1);
+
+    // --- TESTAR FALHAS REAIS (MUTATIONS) ---
+    // 1. Broken P1: remover proposal.proposedVersion
+    const origProposedVersion = s.calendar.proposal.proposedVersion;
+    s.calendar.proposal.proposedVersion = null;
+    const brokenP1Audit = window.ManagementApp.runAllInvariantAudits();
+    const brokenP1Detected = (brokenP1Audit.p1.status === 'FAIL');
+    s.calendar.proposal.proposedVersion = origProposedVersion;
+
+    // 2. Broken P2: remover origin da premissa obrigatória ASM-01
+    const origOrigin = s.scenario.assumptions['ASM-01'].origin;
+    s.scenario.assumptions['ASM-01'].origin = null;
+    const brokenP2Audit = window.ManagementApp.runAllInvariantAudits();
+    const brokenP2Detected = (brokenP2Audit.p2.status === 'FAIL');
+    s.scenario.assumptions['ASM-01'].origin = origOrigin;
+
+    // 3. Broken P3: eligiblePopulation negativo (-5)
+    const origEligible = s.adoption.eligiblePopulation;
+    s.adoption.eligiblePopulation = -5;
+    const brokenP3Audit = window.ManagementApp.runAllInvariantAudits();
+    const brokenP3Detected = (brokenP3Audit.p3.status === 'FAIL');
+    s.adoption.eligiblePopulation = origEligible;
+
+    // Restore clean audit
+    window.ManagementApp.runAllInvariantAudits();
+
+    const allBrokenDetected = brokenP1Detected && brokenP2Detected && brokenP3Detected;
+    const pass = allValidPassed && allBrokenDetected;
+
+    return {
+      id: 'RS1',
+      pass,
+      claim: 'Runtime review surface é context-safe em estados válidos e detecta violações reais (Operating Model v2.4 / R3)',
+      observation: 'Matriz de 8 estados válidos sem falso FAIL: ' + allValidPassed + ', Falhas reais detectadas (Broken P1: ' + brokenP1Detected + ', Broken P2: ' + brokenP2Detected + ', Broken P3: ' + brokenP3Detected + ')',
+      expected: 'Zero falso FAIL em P1, P2 e P3 nos 8 estados operacionais válidos; e detecção estrita de FAIL sob quebra de contrato semântico',
+      actual: pass ? 'Context safety comprovado: nenhuma contradição em estados válidos e 100% de sensibilidade a violações semânticas' : 'Falha em context safety: falso FAIL ou falso PASS detectado',
+      detail: 'Operating Model v2.4: Separação estrita entre scenario assertion e runtime semantic invariant',
+      stateMatrix: statesMatrix,
+      brokenChecks: {
+        brokenP1Detected,
+        brokenP2Detected,
+        brokenP3Detected
+      }
+    };
+  })()`);
+  additionalProofs.RS1 = rs1Detail;
+  console.log(`RS1 (${rs1Detail.claim}): ${rs1Detail.pass ? 'PASS' : 'FAIL'}`);
+
+  // -------------------------------------------------------------------------
   // HARNESS MUTATION SELF-CHECK (Section 19)
   // -------------------------------------------------------------------------
   console.log('\n--- Executando Harness Mutation Self-Check (Section 19) ---');
@@ -1310,15 +1440,15 @@ async function runTests() {
     window.ManagementApp.selectScenario(1);
     const s = window.ManagementApp.getState();
 
-    // Corrompe propositalmente o horário vigente para testar se P1 falha
-    const origStart = s.calendar.currentVersion.startTime;
-    s.calendar.currentVersion.startTime = '21:00'; // Quebra invariante P1
+    // Corrompe propositalmente a proposta removendo proposedVersion para testar se P1 falha
+    const origProposedVersion = s.calendar.proposal.proposedVersion;
+    s.calendar.proposal.proposedVersion = null; // Quebra invariante semântico P1
 
     const auditBroken = window.ManagementApp.runAllInvariantAudits();
     const brokenDetected = (auditBroken.p1.status === 'FAIL');
 
     // Restaura
-    s.calendar.currentVersion.startTime = origStart;
+    s.calendar.proposal.proposedVersion = origProposedVersion;
     const auditRestored = window.ManagementApp.runAllInvariantAudits();
     const restoredDetected = (auditRestored.p1.status === 'PASS');
 
@@ -1401,7 +1531,7 @@ async function runTests() {
   console.log(` Positive Proofs (P1-P3): ${allPositivePass ? 'ALL PASS' : 'FAIL'}`);
   console.log(` Negative Proofs (N1-N8): ${allNegativePass ? 'ALL PASS' : 'FAIL'}`);
   console.log(` Adversarial Proofs (A1-A6): ${allAdversarialPass ? 'ALL PASS' : 'FAIL'}`);
-  console.log(` Additional Rigor Proofs (ZD1, T1 & V1): ${allAdditionalPass ? 'ALL PASS' : 'FAIL'}`);
+  console.log(` Additional Rigor Proofs (ZD1, T1, V1 & RS1): ${allAdditionalPass ? 'ALL PASS' : 'FAIL'}`);
   console.log(` Standalone Truthfulness Gate (v2.3): ${standalonePass ? 'PASS (NOT_RUN verificado)' : 'FAIL'}`);
   console.log(` Mutation Self-Check: ${selfCheckPass ? 'PASS' : 'FAIL'}`);
   console.log(` Mobile Overflow: ${mobilePass ? 'NONE (PASS)' : 'OVERFLOW FAIL'}`);
@@ -1507,10 +1637,10 @@ function writeEvidenceReport(logData) {
 **Projeto:** Toca do Peixe  
 **Frente:** CW-04 — Decisão Gerencial / Gestão  
 **Work Item:** CW04-WI02 — Calendário, cenários e adoção  
-**Revisão:** R2 — Fechar provenance temporal e evidence visual  
+**Revisão:** R3 — Tornar runtime invariants context-safe  
 **Data:** 01/10/2026  
 **Status do Executor:** DONE (Pronto para re-review independente do ChatGPT)  
-**Governança:** DONE ≠ APPROVED (Operating Model v2.3)
+**Governança:** DONE ≠ APPROVED (Operating Model v2.4)
 
 ---
 
@@ -1521,7 +1651,7 @@ function writeEvidenceReport(logData) {
 - **Base commit esperado:** \`fb7591e19d40a6c86f9a3030d73ed6848d2cb375\`
 - **Branch:** \`ux-cw04-wi02\`
 - **Diretório isolado:** \`prototypes/ux-cw04/wi02-calendar-scenarios/\`
-- **Repositório Público de Evidências (R1-F01 / R2):** \`https://github.com/sstjonas/tocadopeixe-ux-cw04-evidence/tree/main/wi02\`
+- **Repositório Público de Evidências (R1-F01 / R2 / R3):** \`https://github.com/sstjonas/tocadopeixe-ux-cw04-evidence/tree/main/wi02\`
 - **Repositório de produção:** 100% intocado (\`tocadopeixe/repo/tocadopeixe\` e \`tocadopeixe-repo\` limpos).
 
 ---
@@ -1578,7 +1708,7 @@ ${negRows}
 |---|---|---|---|---|:---:|
 ${advRows}
 
-### 4.5 Provas Adicionais de Rigor (ZD1, T1 & V1 — Operating Model v2.3 / B01-D19 / R2-F01)
+### 4.5 Provas Adicionais de Rigor (ZD1, T1, V1 & RS1 — Operating Model v2.4 / R3)
 
 | ID | Requisito / Claim | Fato Observado / Evidência | Esperado | Atual | Status |
 |---|---|---|---|---|:---:|
