@@ -1,0 +1,109 @@
+{
+  "timestamp": "2026-10-01T18:31:26.976Z",
+  "suite": "UX-CW04 WI01 Management Decision & Adversarial Test Suite",
+  "summary": {
+    "totalScenarios": 12,
+    "passedScenarios": 12,
+    "failedScenarios": 0,
+    "positiveProofs": {
+      "P1": true,
+      "P2": true,
+      "P3": true
+    },
+    "negativeProofs": {
+      "N1": true,
+      "N2": true,
+      "N3": true,
+      "N4": true,
+      "N5": true,
+      "N6": true,
+      "N7": true
+    },
+    "adversarialProofs": {
+      "A1": true,
+      "A2": true,
+      "A3": true,
+      "A4": true,
+      "A5": true,
+      "A6": true
+    },
+    "mobileHorizontalOverflow": "NONE",
+    "jsConsoleErrors": 0,
+    "status": "ALL_PASS"
+  },
+  "scenarios": [
+    {
+      "id": 1,
+      "name": "Leitura completa",
+      "pass": true,
+      "note": "Valor derivado, cobertura 100% e origem AUD-DEMO-061 navegável via drawer"
+    },
+    {
+      "id": 2,
+      "name": "Cobertura parcial",
+      "pass": true,
+      "note": "Consolidado vira parcial sem preencher unidade ausente com zero"
+    },
+    {
+      "id": 3,
+      "name": "Denominador zero",
+      "pass": true,
+      "note": "População 0 resulta em \"Não aplicável\", nunca 0%"
+    },
+    {
+      "id": 4,
+      "name": "Períodos incompatíveis",
+      "pass": true,
+      "note": "Grãos temporais diferentes bloqueiam comparação percentual"
+    },
+    {
+      "id": 5,
+      "name": "META-DEMO-061 bases disjuntas",
+      "pass": true,
+      "note": "9.000 + 2.000 + 1.000 = 12.000 comprovados sem chamar residual de saldo bancário"
+    },
+    {
+      "id": 6,
+      "name": "META-DEMO-061 overlap desconhecido",
+      "pass": true,
+      "note": "Residual bloqueado com exibição de \"Conferir composição\""
+    },
+    {
+      "id": 7,
+      "name": "Meta v1 -> v2",
+      "pass": true,
+      "note": "v1.0 preservada no histórico; v2.0 proposta com autor e vigência sem reescrita"
+    },
+    {
+      "id": 8,
+      "name": "PA-DEMO-061 ação executada",
+      "pass": true,
+      "note": "Status muda para executada sem gerar verificação nem outcome automáticos"
+    },
+    {
+      "id": 9,
+      "name": "Evidence + Verificação aceita",
+      "pass": true,
+      "note": "Verificação aceita sem dar baixa automática em AUD-DEMO-061 nem OS-DEMO-061"
+    },
+    {
+      "id": 10,
+      "name": "Reunião encerrada",
+      "pass": true,
+      "note": "Reunião encerrada conserva plano ativo e pendências abertas"
+    },
+    {
+      "id": 11,
+      "name": "Responsável sem acesso",
+      "pass": true,
+      "note": "Atribuição a ator sem credencial é recusada sem expor dados restritos"
+    },
+    {
+      "id": 12,
+      "name": "Outcome posterior",
+      "pass": true,
+      "note": "OutcomeObservation possui identidade própria e não reescreve execução passada"
+    }
+  ],
+  "errors": []
+}
