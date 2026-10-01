@@ -2,7 +2,7 @@
 **Projeto:** Toca do Peixe  
 **Frente:** CW-04 — Decisão Gerencial / Gestão  
 **Work Item:** CW04-WI02 — Calendário, cenários e adoção  
-**Revisão:** R1 — Endurecer versionamento, efeito zero e evidence  
+**Revisão:** R2 — Fechar provenance temporal e evidence visual  
 **Data:** 01/10/2026  
 **Status do Executor:** DONE (Pronto para re-review independente do ChatGPT)  
 **Governança:** DONE ≠ APPROVED (Operating Model v2.3)
@@ -16,14 +16,14 @@
 - **Base commit esperado:** `fb7591e19d40a6c86f9a3030d73ed6848d2cb375`
 - **Branch:** `ux-cw04-wi02`
 - **Diretório isolado:** `prototypes/ux-cw04/wi02-calendar-scenarios/`
-- **Repositório Público de Evidências (R1-F01):** `https://github.com/sstjonas/tocadopeixe-ux-cw04-evidence/tree/main/wi02`
+- **Repositório Público de Evidências (R1-F01 / R2):** `https://github.com/sstjonas/tocadopeixe-ux-cw04-evidence/tree/main/wi02`
 - **Repositório de produção:** 100% intocado (`tocadopeixe/repo/tocadopeixe` e `tocadopeixe-repo` limpos).
 
 ---
 
 ## 2. Superfícies Normativas v1.0
 
-1. **SCR-GES-004 — Calendário operacional e unidades** (janelas vigentes, propostas de alteração, dependências concorrentes, impact assessment stale e publicação por destino desacoplada).
+1. **SCR-GES-004 — Calendário operacional e unidades** (janelas vigentes, propostas de alteração, dependências concorrentes, impact assessment stale, version/base provenance e publicação por destino desacoplada).
 2. **SCR-GES-005 — Cenários e adoção** (simulação financeira baseada exclusivamente em premissas com limitações contratuais explícitas; medição rigorosa de adoção com denominador elegível e restrição de generalização).
 
 ---
@@ -52,7 +52,7 @@
 ### 4.1 Standalone Truthfulness Gate (v2.3)
 
 - **A1–A6 (Adversariais Harness-Only):** Nascem estritamente como **`NOT_RUN`** em modo standalone (com badge neutro cinza, ícone `○` e tag de origem `harness`).
-- **P1–P3 e N1–N8:** Avaliados dinamicamente em tempo real a partir do estado factual (`source: runtime`).
+- **P1–P3, N1–N8, ZD1, T1 e V1:** Avaliados dinamicamente em tempo real a partir do estado factual (`source: runtime`).
 - **Screenshot Canônica:** [standalone-proof-panel-not-run.png](screenshots/standalone-proof-panel-not-run.png)
 
 ### 4.2 Positive Proofs (P1-P3)
@@ -87,12 +87,13 @@
 | **A5** | Autodeclaração de economia realizada sobre cenário hipotético é estritamente rejeitada | Status factual do cenário: SIMULACAO_HIPOTESE, Claim injetado: "Economia realizada" | Status do cenário permanece SIMULACAO_HIPOTESE com rejeição de claim de realização | Claim de economia realizada rejeitado; mantido status de simulação hipotética | **PASS** |
 | **A6** | Inflação de cliques/interações não altera a taxa formal de adoção (15/20 = 75%) | Cliques espúrios adicionados: 500, Taxa apurada: 15/20 (75%) | Taxa imutável calculada estritamente pelo número de tarefas concluídas no fluxo formal | Taxa permaneceu estritamente em 15/20 (75%) sem inflação por cliques | **PASS** |
 
-### 4.5 Provas Adicionais de Rigor (ZD1 & T1 — Operating Model v2.3 / B01-D19)
+### 4.5 Provas Adicionais de Rigor (ZD1, T1 & V1 — Operating Model v2.3 / B01-D19 / R2-F01)
 
 | ID | Requisito / Claim | Fato Observado / Evidência | Esperado | Atual | Status |
 |---|---|---|---|---|:---:|
 | **ZD1** | Adoção com denominador zero resulta em "Não aplicável" e recusa 0% (Regra V6) | isNotApplicable: true, ratePct: null, DOM text: "Não aplicável" | Denominador zero tratado como Não aplicável, sem zero artificial no DOM | Estado Não aplicável comprovado e zero percentual estritamente omitido | **PASS** |
-| **T1** | Janela transnoite preserva businessDate, duração positiva e fuso canônico (Regra B01-D19) | Civil: 2026-10-03 a 2026-10-04, businessDate: 2026-10-03, Duração: 240m, Timezone: America/Sao_Paulo | Duas datas civis explícitas, data de negócio inalterada, duração positiva (240m) e histórico imutável | Contrato temporal D19 comprovado com preservação de businessDate e imutabilidade de fatos pretéritos | **PASS** |
+| **T1** | Janela transnoite preserva businessDate, duração positiva e fatos históricos sob mudança de fuso (Regra B01-D19 / R2-F02) | Civil: 2026-10-03 a 2026-10-04, businessDate: 2026-10-03, Duração: 240m, Timezone: America/Sao_Paulo, Imutabilidade histórica sob UTC: true, Projeção divergida: true | Duas datas civis explícitas, data de negócio inalterada (2026-10-03), duração positiva (240m), e fuso futuro UTC não reescreve dados armazenados | Contrato temporal D19 e imutabilidade factual comprovados sob mudança real de fuso de apresentação | **PASS** |
+| **V1** | Calendar base/version mismatch rejeita assessment antigo sem mutação da versão vigente (R2-F01) | Gate coerente prévio: true, Gate sob mismatch: false (allowed=false), Motivo: "Base version mismatch: Impact Assessment avaliou base 'CAL-DEMO-061-v1', mas versão vigente atual é 'CAL-DEMO-061-v2-external'.", Versão preservada: true | Gate aceita proposta com base idêntica e rejeita estritamente após mismatch de baseCalendarVersion | Rejeição obrigatória por version mismatch comprovada com imutabilidade da CalendarVersion | **PASS** |
 
 ---
 
@@ -100,7 +101,7 @@
 
 - **Falso Claim Detectado:** PASS (Avaliador factual detectou corrupção proposital e retornou FAIL).
 - **Mutation Test:** PASS (Restauração do fato material retornou PASS).
-- **Exit-Code Gate:** Conectado a todos os gates (cenários, P, N, A, ZD1, T1, standalone audit, self-check, mobile e console).
+- **Exit-Code Gate:** Conectado a todos os gates (cenários, P, N, A, ZD1, T1, V1, standalone audit, self-check, mobile e console).
 
 ---
 

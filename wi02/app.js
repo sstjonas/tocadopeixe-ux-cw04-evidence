@@ -97,6 +97,17 @@
     historicalTimestampUtc: '2026-10-04T01:00:00Z'
   };
 
+  // Synthetic D19 Historical Operational Fact Fixture (R2-F02)
+  const HISTORICAL_FACT_FIXTURE = {
+    id: 'HIST-TIME-001',
+    occurredAtUtc: '2026-10-04T01:00:00Z',
+    recordedTimezone: 'America/Sao_Paulo',
+    recordedBusinessDate: '2026-10-03',
+    recordedCivilDate: '2026-10-03',
+    recordedServiceShift: 'Jantar de Sábado (Pós-Meia-Noite)',
+    details: 'Fechamento de mesa 12 na virada transnoite às 22:00-02:00'
+  };
+
   // =========================================================================
   // 2. CENTRAL STATE STORE
   // =========================================================================
@@ -171,10 +182,14 @@
         'PRO-DEMO-062': JSON.parse(JSON.stringify(INITIAL_OPERATIONAL_FACTS['PRO-DEMO-062']))
       },
 
-      // Impact Assessment (versioned & provenance-aware)
+      // Impact Assessment (versioned & provenance-aware - R2-F01)
       impactAssessment: {
         id: 'IA-CAL-061-01',
         assessmentVersion: 1,
+        baseCalendarVersionId: 'CAL-DEMO-061-v1',
+        baseCalendarVersion: '1.0.0',
+        proposalId: 'PROP-CAL-061-01',
+        proposalVersion: '2.0.0',
         assessedAt: '2026-10-02T10:15:00Z',
         status: 'VALID', // 'VALID' | 'STALE'
         evaluatedDependencyIds: ['RES-DEMO-062', 'PRO-DEMO-062'],
@@ -273,6 +288,7 @@
       n8: { status: 'NOT_RUN', source: 'runtime', observation: null, evaluatedAt: null },
       zd1: { status: 'NOT_RUN', source: 'runtime', observation: null, evaluatedAt: null },
       t1: { status: 'NOT_RUN', source: 'runtime', observation: null, evaluatedAt: null },
+      v1: { status: 'NOT_RUN', source: 'runtime', observation: null, evaluatedAt: null },
       a1: { status: 'NOT_RUN', source: 'harness', observation: 'Requer injeção deliberada de badge visual falso no DOM via CDP', evaluatedAt: null },
       a2: { status: 'NOT_RUN', source: 'harness', observation: 'Requer tentativa de remoção de compromisso factual via CDP', evaluatedAt: null },
       a3: { status: 'NOT_RUN', source: 'harness', observation: 'Requer tentativa de aplicação com assessment stale via CDP', evaluatedAt: null },
@@ -424,16 +440,30 @@
         reasons.push('Impact Assessment com status inválido: ' + cal.impactAssessment.status);
       }
 
-      // 4. Dependency alignment: check if any commitment is unassessed
+      // 5. Dependency alignment: check if any commitment is unassessed
       const activeCommitmentIds = Object.keys(cal.commitments || {});
       const evaluatedIds = cal.impactAssessment.evaluatedDependencyIds || [];
       const unassessed = activeCommitmentIds.filter(id => !evaluatedIds.includes(id));
       if (unassessed.length > 0) {
         reasons.push('Existem compromissos ativos não avaliados no assessment: ' + unassessed.join(', '));
       }
+
+      // 6. Provenance & base calendar/proposal version match (R2-F01)
+      if (cal.impactAssessment.baseCalendarVersionId && cal.currentVersion && cal.impactAssessment.baseCalendarVersionId !== cal.currentVersion.id) {
+        reasons.push(`Base version mismatch: Impact Assessment avaliou base '${cal.impactAssessment.baseCalendarVersionId}', mas versão vigente atual é '${cal.currentVersion.id}'.`);
+      }
+      if (cal.impactAssessment.baseCalendarVersion && cal.currentVersion && cal.impactAssessment.baseCalendarVersion !== cal.currentVersion.version) {
+        reasons.push(`Base version mismatch: Impact Assessment avaliou versão base '${cal.impactAssessment.baseCalendarVersion}', mas versão vigente atual é '${cal.currentVersion.version}'.`);
+      }
+      if (cal.impactAssessment.proposalId && cal.proposal && cal.impactAssessment.proposalId !== cal.proposal.id) {
+        reasons.push(`Proposal mismatch: Impact Assessment avaliou proposta '${cal.impactAssessment.proposalId}', mas proposta atual é '${cal.proposal.id}'.`);
+      }
+      if (cal.impactAssessment.proposalVersion && cal.proposal && cal.impactAssessment.proposalVersion !== cal.proposal.proposedVersion) {
+        reasons.push(`Proposal version mismatch: Impact Assessment avaliou versão '${cal.impactAssessment.proposalVersion}', mas proposta atual é '${cal.proposal.proposedVersion}'.`);
+      }
     }
 
-    // 5. Unresolved material conflicts
+    // 7. Unresolved material conflicts
     const unresolved = Object.keys(cal.commitments || {}).filter(id => {
       const res = cal.resolutions && cal.resolutions[id];
       return !res || res.status !== 'resolvido';
@@ -442,13 +472,13 @@
       reasons.push('Existem dependências materiais pendentes de resolução formal: ' + unresolved.join(', '));
     }
 
-    // 6. Source coverage
+    // 8. Source coverage
     if (!cal.sourceCoverage || cal.sourceCoverage.status === 'parcial') {
       const missing = (cal.sourceCoverage && cal.sourceCoverage.missingChannels) || ['Canais desconhecidos'];
       reasons.push('Cobertura parcial na fonte de reservas (' + missing.join(', ') + ' ausentes): ausência de dados não comprova ausência de conflitos.');
     }
 
-    // 7. Base version match
+    // 9. Base version status
     if (cal.currentVersion && cal.currentVersion.status !== 'vigente') {
       reasons.push('Versão de referência não se encontra em status vigente.');
     }
@@ -464,7 +494,7 @@
         totalDependencies: Object.keys(cal.commitments || {}).length,
         unresolvedCount: unresolved.length
       },
-      assessmentVersion: cal.impactAssessment ? cal.impactAssessment.version : null
+      assessmentVersion: cal.impactAssessment ? cal.impactAssessment.assessmentVersion : null
     };
   }
 
@@ -490,7 +520,89 @@
   }
 
   /**
-   * Validates B01-D19 Temporal Contract for service windows (R1-F06).
+   * Projects a historical operational fact for display under an active timezone configuration
+   * without mutating the immutable historical record (Regra B01-D19 / R2-F02).
+   */
+  function projectHistoricalFactForDisplay(historicalFact, targetTimezone) {
+    const fact = historicalFact || HISTORICAL_FACT_FIXTURE;
+    const tz = targetTimezone || 'America/Sao_Paulo';
+
+    // Parse UTC timestamp
+    const dateObj = new Date(fact.occurredAtUtc);
+
+    // Format display string in the target timezone using Intl.DateTimeFormat
+    const formatter = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+
+    const parts = formatter.formatToParts(dateObj);
+    const getPart = (type) => (parts.find(p => p.type === type) || {}).value;
+    const displayCivilDate = `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
+    const displayTime = `${getPart('hour')}:${getPart('minute')}`;
+
+    return {
+      factId: fact.id,
+      // Immutable historical fields preserved
+      occurredAtUtc: fact.occurredAtUtc,
+      recordedBusinessDate: fact.recordedBusinessDate,
+      recordedCivilDate: fact.recordedCivilDate,
+      recordedTimezone: fact.recordedTimezone,
+      // Projected display fields under active timezone
+      activeConfigTimezone: tz,
+      displayCivilDate,
+      displayTime,
+      displayLabel: `${displayCivilDate} ${displayTime} (${tz})`
+    };
+  }
+
+  /**
+   * Real domain evaluator testing historical immutability under timezone shift simulation (R2-F02).
+   */
+  function evaluateHistoricalFactUnderTimezoneConfig(historicalFact, newTimezone) {
+    const originalFact = historicalFact || HISTORICAL_FACT_FIXTURE;
+    const targetTz = newTimezone || 'UTC';
+
+    // Snapshot original fact before
+    const snapshotBefore = JSON.parse(JSON.stringify(originalFact));
+
+    // Project under original recorded timezone
+    const projOriginal = projectHistoricalFactForDisplay(originalFact, originalFact.recordedTimezone);
+
+    // Project under new/future target timezone (e.g. UTC)
+    const projShifted = projectHistoricalFactForDisplay(originalFact, targetTz);
+
+    // Verify that originalFact was NOT mutated in any way
+    const factRemainedIdentical = (
+      originalFact.occurredAtUtc === snapshotBefore.occurredAtUtc &&
+      originalFact.recordedBusinessDate === snapshotBefore.recordedBusinessDate &&
+      originalFact.recordedTimezone === snapshotBefore.recordedTimezone &&
+      originalFact.recordedCivilDate === snapshotBefore.recordedCivilDate
+    );
+
+    // Verify that presentation changed according to timezone while historical fact remains unchanged
+    // Under America/Sao_Paulo: 2026-10-04T01:00:00Z -> 22:00 on 2026-10-03 (UTC-3)
+    // Under UTC: 2026-10-04T01:00:00Z -> 01:00 on 2026-10-04 (UTC)
+    const displayDivergedAsExpected = (projOriginal.displayCivilDate !== projShifted.displayCivilDate);
+
+    return {
+      pass: factRemainedIdentical && displayDivergedAsExpected,
+      factRemainedIdentical,
+      displayDivergedAsExpected,
+      originalProjection: projOriginal,
+      shiftedProjection: projShifted,
+      fact: originalFact
+    };
+  }
+
+  /**
+   * Validates B01-D19 Temporal Contract for service windows (R1-F06 / R2-F02).
    */
   function validateServiceWindowTemporalContract(win) {
     const w = win || TEMPORAL_MIDNIGHT_FIXTURE;
@@ -523,11 +635,12 @@
     const hasExplicitTimezone = Boolean(w.timezone && w.timezone === 'America/Sao_Paulo');
     if (!hasExplicitTimezone) reasons.push('Timezone IANA canônico deve estar explicitamente declarado.');
 
-    // 6. Historical immutability under timezone shift simulation
-    const simulatedSystemTimezoneShift = 'UTC';
-    const historicalFactBusinessDateAfterShift = w.businessDate; // Must remain '2026-10-03'
-    const isHistoricalFactPreserved = (historicalFactBusinessDateAfterShift === '2026-10-03');
-    if (!isHistoricalFactPreserved) reasons.push('Fato histórico pretérito não pode alterar seu businessDate por mudança de configuração futura.');
+    // 6. Real historical immutability under timezone shift simulation (R2-F02)
+    const tzEvaluation = evaluateHistoricalFactUnderTimezoneConfig(HISTORICAL_FACT_FIXTURE, 'UTC');
+    const isHistoricalFactPreserved = tzEvaluation.pass === true;
+    if (!isHistoricalFactPreserved) {
+      reasons.push('Fato histórico pretérito não pode alterar seu businessDate, timezone gravado ou timestamp por mudança de configuração futura.');
+    }
 
     const pass = (reasons.length === 0);
     return {
@@ -539,6 +652,7 @@
       midnightNotCutoff,
       hasExplicitTimezone,
       isHistoricalFactPreserved,
+      tzEvaluation,
       reasons
     };
   }
@@ -768,14 +882,43 @@
       evaluatedAt: new Date().toISOString()
     };
 
-    // T1: Janela transnoite preserva businessDate e duração positiva (Regra B01-D19 / R1-F06)
+    // T1: Janela transnoite preserva businessDate, duração positiva e fuso canônico (Regra B01-D19 / R2-F02)
     const t1Check = validateServiceWindowTemporalContract(TEMPORAL_MIDNIGHT_FIXTURE);
     results.t1 = {
       status: t1Check.pass ? 'PASS' : 'FAIL',
       source: 'runtime',
       observation: t1Check.pass
-        ? 'Turno 22:00–02:00 preserva businessDate 2026-10-03, duração +240m e fuso America/Sao_Paulo com imutabilidade histórica'
+        ? 'Turno 22:00–02:00 preserva businessDate 2026-10-03, duração +240m e fuso America/Sao_Paulo com imutabilidade factual sob UTC'
         : 'Inconsistência temporal detectada: ' + t1Check.reasons.join(', '),
+      evaluatedAt: new Date().toISOString()
+    };
+
+    // V1: Calendar base/version mismatch rejeita assessment antigo (Operating Model v2.3 / R2-F01)
+    const testCalState = {
+      currentVersion: { id: 'CAL-DEMO-061-v2-external', version: '1.1.0', status: 'vigente' },
+      proposal: { id: 'PROP-CAL-061-01', proposedVersion: '2.0.0', proposedStartTime: '19:00', proposedEndTime: '23:00' },
+      commitments: {},
+      resolutions: {},
+      sourceCoverage: { status: 'completa', missingChannels: [] },
+      impactAssessment: {
+        id: 'IA-CAL-061-01',
+        assessmentVersion: 1,
+        baseCalendarVersionId: 'CAL-DEMO-061-v1',
+        baseCalendarVersion: '1.0.0',
+        proposalId: 'PROP-CAL-061-01',
+        proposalVersion: '2.0.0',
+        status: 'VALID',
+        evaluatedDependencyIds: []
+      }
+    };
+    const v1Gate = evaluateCalendarProposalApplicability(testCalState);
+    const v1Pass = (v1Gate.allowed === false && v1Gate.reasons.some(r => r.includes('Base version mismatch')));
+    results.v1 = {
+      status: v1Pass ? 'PASS' : 'FAIL',
+      source: 'runtime',
+      observation: v1Pass
+        ? 'Base/version mismatch detectado e bloqueado com sucesso pelo gate de aplicabilidade'
+        : 'Falha: gate permitiu aplicação com mismatch de versão base',
       evaluatedAt: new Date().toISOString()
     };
 
@@ -837,9 +980,13 @@
     applyScenario1: function () {
       State.activeScenario = 1;
       State.activeSurface = 'SCR-GES-004';
+      State.calendar.currentVersion.id = 'CAL-DEMO-061-v1';
+      State.calendar.currentVersion.version = '1.0.0';
       State.calendar.currentVersion.startTime = '18:00';
       State.calendar.currentVersion.endTime = '23:00';
       State.calendar.currentVersion.status = 'vigente';
+      State.calendar.proposal.id = 'PROP-CAL-061-01';
+      State.calendar.proposal.proposedVersion = '2.0.0';
       State.calendar.proposal.status = 'em_revisao';
       State.calendar.proposal.proposedStartTime = '19:00';
       State.calendar.proposal.proposedEndTime = '23:00';
@@ -847,6 +994,11 @@
         'RES-DEMO-062': JSON.parse(JSON.stringify(INITIAL_OPERATIONAL_FACTS['RES-DEMO-062'])),
         'PRO-DEMO-062': JSON.parse(JSON.stringify(INITIAL_OPERATIONAL_FACTS['PRO-DEMO-062']))
       };
+      State.calendar.impactAssessment.baseCalendarVersionId = 'CAL-DEMO-061-v1';
+      State.calendar.impactAssessment.baseCalendarVersion = '1.0.0';
+      State.calendar.impactAssessment.proposalId = 'PROP-CAL-061-01';
+      State.calendar.impactAssessment.proposalVersion = '2.0.0';
+      State.calendar.impactAssessment.assessmentVersion = 1;
       State.calendar.impactAssessment.status = 'VALID';
       State.calendar.impactAssessment.evaluatedDependencyIds = ['RES-DEMO-062', 'PRO-DEMO-062'];
       State.calendar.impactAssessment.stalenessReason = null;
@@ -1138,7 +1290,7 @@
         <div class="card-header">
           <div>
             <div class="card-title">Análise de Impacto Concorrente (ImpactAssessment)</div>
-            <div class="card-subtitle">Identificador: ${cal.impactAssessment.id} (v${cal.impactAssessment.assessmentVersion})</div>
+            <div class="card-subtitle">Identificador: ${cal.impactAssessment.id} (v${cal.impactAssessment.assessmentVersion}) · Base Vigente: <strong>${cal.impactAssessment.baseCalendarVersionId} (v${cal.impactAssessment.baseCalendarVersion})</strong> · Proposta: <strong>${cal.impactAssessment.proposalId} (v${cal.impactAssessment.proposalVersion})</strong></div>
           </div>
           <div style="display: flex; gap: 8px;">
             <span class="badge ${isStale ? 'badge-danger' : 'badge-success'}" id="badge-assessment-status">
@@ -1355,11 +1507,11 @@
       </div>
 
       <!-- Seção 2: Medição de Adoção de Fluxo -->
-      <div class="card">
+      <div class="card" id="section-adoption-measurement">
         <div class="card-header">
           <div>
             <div class="card-title">Medição de Adoção de Fluxo Operacional</div>
-            <div class="card-subtitle">Processo: ${adp.processName} · Unidade: ${adp.unit}</div>
+            <div class="card-subtitle">Processo: ${adp.processName} · Unidade: ${adp.unit} · Período Operacional: <strong>${adp.period}</strong></div>
           </div>
           <span class="badge ${adpMet.isCoveragePartial ? 'badge-warning' : 'badge-success'}" id="badge-adopt-coverage">
             ${adpMet.isCoveragePartial ? '⚠️ Instrumentação Parcial' : '● Instrumentação Completa'}
@@ -1377,7 +1529,7 @@
               ${adpMet.isNotApplicable ? 'Não aplicável' : `${adpMet.ratePct}%`}
             </div>
             <div style="font-size: 12px; color: var(--fg-muted);" id="adoption-rate-caption">
-              ${adpMet.isNotApplicable ? 'Denominador zero: ausência de tarefas elegíveis no período' : `Fração: <strong>${adpMet.rateFraction}</strong> tarefas observadas no fluxo formal`}
+              ${adpMet.isNotApplicable ? 'Denominador zero: sem população elegível no período' : `Fração: <strong>${adpMet.rateFraction}</strong> tarefas observadas no fluxo formal`}
             </div>
           </div>
 
@@ -1403,7 +1555,7 @@
           <div class="callout callout-warning" id="callout-adopt-generalization">
             <strong>Restrição de Interpretação por Cobertura Parcial (N8):</strong>
             <br>Terminais não monitorados: ${adp.sourceCoverage.unmonitoredTerminals.join(', ')}.
-            <br>A taxa de ${adpMet.ratePct}% é válida estritamente para a amostra de ${adp.eligiblePopulation} tarefas disponíveis na telemetria. É PROIBIDO generalizar esta taxa como sendo a adoção do restaurante inteiro.
+            <br>A taxa de ${adpMet.ratePct}% é válida estritamente para a amostra observada de ${adp.eligiblePopulation} tarefas disponíveis na telemetria. É ESTRITAMENTE PROIBIDO generalizar esta taxa como representativa do restaurante inteiro.
           </div>
         ` : ''}
 
@@ -1436,6 +1588,7 @@
       { key: 'n8', label: 'N8 — Adoção parcial não generaliza para o restaurante inteiro' },
       { key: 'zd1', label: 'ZD1 — Adoção com denominador zero resulta em "Não aplicável" (Regra V6)' },
       { key: 't1', label: 'T1 — Janela transnoite preserva businessDate e duração positiva (Regra B01-D19)' },
+      { key: 'v1', label: 'V1 — Calendar base/version mismatch rejeita assessment antigo' },
       { key: 'a1', label: 'A1 — Badge "Vigente 19–23" falso no DOM é rejeitado pelo evaluator factual' },
       { key: 'a2', label: 'A2 — Tentativa de fazer calendário caber apagando compromisso é bloqueada' },
       { key: 'a3', label: 'A3 — Tentativa de usar impact assessment stale é rejeitada pelo gate' },
@@ -1591,6 +1744,9 @@
     OPERATIONAL_FACTS_SNAPSHOT,
     INITIAL_SCENARIO_V1,
     TEMPORAL_MIDNIGHT_FIXTURE,
+    HISTORICAL_FACT_FIXTURE,
+    projectHistoricalFactForDisplay,
+    evaluateHistoricalFactUnderTimezoneConfig,
     resetScenarioToV1: function () {
       State.scenario = JSON.parse(JSON.stringify(INITIAL_SCENARIO_V1));
       renderApp();

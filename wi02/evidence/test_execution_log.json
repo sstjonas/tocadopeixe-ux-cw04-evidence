@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-01T20:02:05.352Z",
+  "timestamp": "2026-10-01T20:24:09.039Z",
   "suite": "UX-CW04 WI02 Calendar, Scenarios & Adoption Adversarial Test Suite",
   "summary": {
     "totalScenarios": 12,
@@ -8,7 +8,7 @@
     "positiveProofsCount": 3,
     "negativeProofsCount": 8,
     "adversarialProofsCount": 6,
-    "additionalProofsCount": 2,
+    "additionalProofsCount": 3,
     "standaloneTruthfulnessGate": "PASS",
     "mutationSelfCheck": "PASS",
     "mobileHorizontalOverflow": "NONE",
@@ -231,11 +231,20 @@
     "T1": {
       "id": "T1",
       "pass": true,
-      "claim": "Janela transnoite preserva businessDate, duração positiva e fuso canônico (Regra B01-D19)",
-      "observation": "Civil: 2026-10-03 a 2026-10-04, businessDate: 2026-10-03, Duração: 240m, Timezone: America/Sao_Paulo",
-      "expected": "Duas datas civis explícitas, data de negócio inalterada, duração positiva (240m) e histórico imutável",
-      "actual": "Contrato temporal D19 comprovado com preservação de businessDate e imutabilidade de fatos pretéritos",
+      "claim": "Janela transnoite preserva businessDate, duração positiva e fatos históricos sob mudança de fuso (Regra B01-D19 / R2-F02)",
+      "observation": "Civil: 2026-10-03 a 2026-10-04, businessDate: 2026-10-03, Duração: 240m, Timezone: America/Sao_Paulo, Imutabilidade histórica sob UTC: true, Projeção divergida: true",
+      "expected": "Duas datas civis explícitas, data de negócio inalterada (2026-10-03), duração positiva (240m), e fuso futuro UTC não reescreve dados armazenados",
+      "actual": "Contrato temporal D19 e imutabilidade factual comprovados sob mudança real de fuso de apresentação",
       "detail": "Operação noturna não encerra à meia-noite e fuso futuro não reinterpreta passado"
+    },
+    "V1": {
+      "id": "V1",
+      "pass": true,
+      "claim": "Calendar base/version mismatch rejeita assessment antigo sem mutação da versão vigente (R2-F01)",
+      "observation": "Gate coerente prévio: true, Gate sob mismatch: false (allowed=false), Motivo: \"Base version mismatch: Impact Assessment avaliou base 'CAL-DEMO-061-v1', mas versão vigente atual é 'CAL-DEMO-061-v2-external'.\", Versão preservada: true",
+      "expected": "Gate aceita proposta com base idêntica e rejeita estritamente após mismatch de baseCalendarVersion",
+      "actual": "Rejeição obrigatória por version mismatch comprovada com imutabilidade da CalendarVersion",
+      "detail": "ImpactAssessment possui acoplamento biunívoco com a CalendarVersion base e a ProposalVersion analisada"
     }
   },
   "selfCheck": {

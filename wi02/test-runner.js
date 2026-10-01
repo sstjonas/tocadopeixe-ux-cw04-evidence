@@ -608,7 +608,17 @@ async function runTests() {
     c11State.exclusionsCount >= 2
   );
 
+  await client.eval(`(() => {
+    const el = document.getElementById('section-adoption-measurement');
+    if (el) {
+      const y = el.getBoundingClientRect().top + window.pageYOffset - 90;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'instant' });
+    }
+  })()`);
+  await delay(300);
   await client.screenshot('adocao-15-20-breakdown.png');
+  await client.eval("window.scrollTo(0, 0)");
+  await delay(150);
   scenarioLog.push({ id: 11, name: 'Adoção 15/20', pass: c11Pass, note: 'Taxa de 75% apurada sob 20 tarefas elegíveis com separação de assistidas e gaps' });
   console.log(`Cenário 11: ${c11Pass ? 'PASS' : 'FAIL'}`);
 
@@ -638,7 +648,17 @@ async function runTests() {
     c12State.calloutText.includes('PROIBIDO generalizar')
   );
 
+  await client.eval(`(() => {
+    const el = document.getElementById('section-adoption-measurement');
+    if (el) {
+      const y = el.getBoundingClientRect().top + window.pageYOffset - 90;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'instant' });
+    }
+  })()`);
+  await delay(300);
   await client.screenshot('adocao-cobertura-parcial.png');
+  await client.eval("window.scrollTo(0, 0)");
+  await delay(150);
   scenarioLog.push({ id: 12, name: 'Adoção Parcial', pass: c12Pass, note: 'Instrumentação parcial bloqueia generalização da taxa para todo o restaurante' });
   console.log(`Cenário 12: ${c12Pass ? 'PASS' : 'FAIL'}`);
 
@@ -1137,22 +1157,32 @@ async function runTests() {
   // Take screenshot for ZD1
   await client.eval(`(() => {
     window.ManagementApp.selectScenario(11);
-    window.ManagementApp.getState().adoption.eligiblePopulation = 0;
+    const adp = window.ManagementApp.getState().adoption;
+    adp.eligiblePopulation = 0;
+    adp.completedFlow = 0;
+    adp.assistedOutside = 0;
+    adp.evidenceGaps = 0;
     window.ManagementApp.renderApp();
+    const el = document.getElementById('section-adoption-measurement');
+    if (el) {
+      const y = el.getBoundingClientRect().top + window.pageYOffset - 90;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'instant' });
+    }
   })()`);
-  await delay(200);
+  await delay(300);
   await client.screenshot('adoption-zero-denominator-not-applicable.png');
   await client.eval(`(() => {
-    window.ManagementApp.getState().adoption.eligiblePopulation = 20;
-    window.ManagementApp.renderApp();
+    window.ManagementApp.selectScenario(11);
+    window.scrollTo(0, 0);
   })()`);
-  await delay(200);
+  await delay(150);
 
-  // T1: Janela de serviço transnoite, businessDate estável e timezone explícito (Regra B01-D19 / R1-F06)
+  // T1: Janela de serviço transnoite, businessDate estável, timezone explícito e imutabilidade de fatos pretéritos sob mudança de timezone (R2-F02)
   const t1Detail = await client.eval(`(() => {
     window.ManagementApp.selectScenario(1);
     const contract = window.ManagementApp.validateServiceWindowTemporalContract();
     const fixture = window.ManagementApp.TEMPORAL_MIDNIGHT_FIXTURE;
+    const tzEval = window.ManagementApp.evaluateHistoricalFactUnderTimezoneConfig();
 
     const pass = (
       contract.pass === true &&
@@ -1162,16 +1192,19 @@ async function runTests() {
       contract.durationMinutes === 240 &&
       contract.midnightNotCutoff === true &&
       contract.hasExplicitTimezone === true &&
-      contract.isHistoricalFactPreserved === true
+      contract.isHistoricalFactPreserved === true &&
+      tzEval.pass === true &&
+      tzEval.factRemainedIdentical === true &&
+      tzEval.displayDivergedAsExpected === true
     );
 
     return {
       id: 'T1',
       pass,
-      claim: 'Janela transnoite preserva businessDate, duração positiva e fuso canônico (Regra B01-D19)',
-      observation: \`Civil: \${fixture.civilStartDate} a \${fixture.civilEndDate}, businessDate: \${fixture.businessDate}, Duração: \${contract.durationMinutes}m, Timezone: \${fixture.timezone}\`,
-      expected: 'Duas datas civis explícitas, data de negócio inalterada, duração positiva (240m) e histórico imutável',
-      actual: pass ? 'Contrato temporal D19 comprovado com preservação de businessDate e imutabilidade de fatos pretéritos' : 'Inconsistência temporal detectada: ' + contract.reasons.join('; '),
+      claim: 'Janela transnoite preserva businessDate, duração positiva e fatos históricos sob mudança de fuso (Regra B01-D19 / R2-F02)',
+      observation: 'Civil: ' + fixture.civilStartDate + ' a ' + fixture.civilEndDate + ', businessDate: ' + fixture.businessDate + ', Duração: ' + contract.durationMinutes + 'm, Timezone: ' + fixture.timezone + ', Imutabilidade histórica sob UTC: ' + tzEval.factRemainedIdentical + ', Projeção divergida: ' + tzEval.displayDivergedAsExpected,
+      expected: 'Duas datas civis explícitas, data de negócio inalterada (2026-10-03), duração positiva (240m), e fuso futuro UTC não reescreve dados armazenados',
+      actual: pass ? 'Contrato temporal D19 e imutabilidade factual comprovados sob mudança real de fuso de apresentação' : 'Inconsistência temporal detectada: ' + contract.reasons.join('; '),
       detail: 'Operação noturna não encerra à meia-noite e fuso futuro não reinterpreta passado'
     };
   })()`);
@@ -1186,13 +1219,88 @@ async function runTests() {
     s.calendar.currentVersion.startTime = '22:00';
     s.calendar.currentVersion.endTime = '02:00';
     window.ManagementApp.renderApp();
+    window.scrollTo(0, 0);
   })()`);
-  await delay(200);
+  await delay(300);
   await client.screenshot('calendar-cross-midnight-business-date.png');
   await client.eval(`(() => {
     window.ManagementApp.selectScenario(1);
   })()`);
-  await delay(200);
+  await delay(150);
+
+  // -------------------------------------------------------------------------
+  // V1: Calendar base/version mismatch rejects old assessment (Operating Model v2.3 / R2-F01)
+  // -------------------------------------------------------------------------
+  console.log('\n--- Verificando V1: Calendar Base/Version Mismatch ---');
+  const v1Detail = await client.eval(`(() => {
+    // 1. Construir assessment válido contra CAL-DEMO-061-v1 / version 1.0.0
+    window.ManagementApp.selectScenario(1);
+    const s = window.ManagementApp.getState();
+
+    s.calendar.currentVersion.id = 'CAL-DEMO-061-v1';
+    s.calendar.currentVersion.version = '1.0.0';
+    s.calendar.currentVersion.status = 'vigente';
+    s.calendar.proposal.id = 'PROP-CAL-061-01';
+    s.calendar.proposal.proposedVersion = '2.0.0';
+    s.calendar.proposal.proposedStartTime = '19:00';
+    s.calendar.proposal.proposedEndTime = '23:00';
+
+    s.calendar.impactAssessment = {
+      id: 'IA-CAL-061-01',
+      assessmentVersion: 1,
+      baseCalendarVersionId: 'CAL-DEMO-061-v1',
+      baseCalendarVersion: '1.0.0',
+      proposalId: 'PROP-CAL-061-01',
+      proposalVersion: '2.0.0',
+      assessedAt: '2026-10-02T10:15:00Z',
+      status: 'VALID',
+      evaluatedDependencyIds: ['RES-DEMO-062', 'PRO-DEMO-062'],
+      stalenessReason: null
+    };
+
+    // Resolver dependências para atingir estado coerente onde gate seria allowed
+    s.calendar.resolutions['RES-DEMO-062'] = { status: 'resolvido', resolvedBy: 'Recepção (Amanda)', note: 'Remanejado' };
+    s.calendar.resolutions['PRO-DEMO-062'] = { status: 'resolvido', resolvedBy: 'Cozinha (Chef)', note: 'Escala ajustada' };
+    s.calendar.sourceCoverage.status = 'completa';
+    s.calendar.sourceCoverage.missingChannels = [];
+
+    // 2. Confirmar gate válido no estado coerente
+    const coherentGate = window.ManagementApp.evaluateCalendarProposalApplicability(s.calendar);
+    const coherentAllowed = (coherentGate.allowed === true);
+
+    // 3. Alterar SOMENTE CalendarVersion atual para nova base sem regenerar o assessment
+    s.calendar.currentVersion.id = 'CAL-DEMO-061-v2-external';
+    s.calendar.currentVersion.version = '1.1.0';
+
+    // 4. Executar o MESMO evaluateCalendarProposalApplicability()
+    const mismatchGate = window.ManagementApp.evaluateCalendarProposalApplicability(s.calendar);
+
+    // 5. Resultado obrigatório: allowed = false, reason inclui base/version mismatch
+    const isBlocked = (mismatchGate.allowed === false);
+    const hasMismatchReason = mismatchGate.reasons.some(r => r.includes('Base version mismatch'));
+
+    // 6. CalendarVersion não pode ser modificada pelo evaluator
+    const versionUnchangedByEvaluator = (
+      s.calendar.currentVersion.id === 'CAL-DEMO-061-v2-external' &&
+      s.calendar.currentVersion.version === '1.1.0'
+    );
+
+    // 7. Restaurar state depois
+    window.ManagementApp.selectScenario(1);
+
+    const pass = (coherentAllowed && isBlocked && hasMismatchReason && versionUnchangedByEvaluator);
+    return {
+      id: 'V1',
+      pass,
+      claim: 'Calendar base/version mismatch rejeita assessment antigo sem mutação da versão vigente (R2-F01)',
+      observation: 'Gate coerente prévio: ' + coherentAllowed + ', Gate sob mismatch: ' + !isBlocked + ' (allowed=' + mismatchGate.allowed + '), Motivo: "' + (mismatchGate.reasons.find(r => r.includes('Base version mismatch')) || '') + '", Versão preservada: ' + versionUnchangedByEvaluator,
+      expected: 'Gate aceita proposta com base idêntica e rejeita estritamente após mismatch de baseCalendarVersion',
+      actual: pass ? 'Rejeição obrigatória por version mismatch comprovada com imutabilidade da CalendarVersion' : 'Falha: gate aceitou assessment com base divergente ou corrompeu versão',
+      detail: 'ImpactAssessment possui acoplamento biunívoco com a CalendarVersion base e a ProposalVersion analisada'
+    };
+  })()`);
+  additionalProofs.V1 = v1Detail;
+  console.log(`V1 (${v1Detail.claim}): ${v1Detail.pass ? 'PASS' : 'FAIL'}`);
 
   // -------------------------------------------------------------------------
   // HARNESS MUTATION SELF-CHECK (Section 19)
@@ -1293,7 +1401,7 @@ async function runTests() {
   console.log(` Positive Proofs (P1-P3): ${allPositivePass ? 'ALL PASS' : 'FAIL'}`);
   console.log(` Negative Proofs (N1-N8): ${allNegativePass ? 'ALL PASS' : 'FAIL'}`);
   console.log(` Adversarial Proofs (A1-A6): ${allAdversarialPass ? 'ALL PASS' : 'FAIL'}`);
-  console.log(` Additional Rigor Proofs (ZD1 & T1): ${allAdditionalPass ? 'ALL PASS' : 'FAIL'}`);
+  console.log(` Additional Rigor Proofs (ZD1, T1 & V1): ${allAdditionalPass ? 'ALL PASS' : 'FAIL'}`);
   console.log(` Standalone Truthfulness Gate (v2.3): ${standalonePass ? 'PASS (NOT_RUN verificado)' : 'FAIL'}`);
   console.log(` Mutation Self-Check: ${selfCheckPass ? 'PASS' : 'FAIL'}`);
   console.log(` Mobile Overflow: ${mobilePass ? 'NONE (PASS)' : 'OVERFLOW FAIL'}`);
@@ -1399,7 +1507,7 @@ function writeEvidenceReport(logData) {
 **Projeto:** Toca do Peixe  
 **Frente:** CW-04 — Decisão Gerencial / Gestão  
 **Work Item:** CW04-WI02 — Calendário, cenários e adoção  
-**Revisão:** R1 — Endurecer versionamento, efeito zero e evidence  
+**Revisão:** R2 — Fechar provenance temporal e evidence visual  
 **Data:** 01/10/2026  
 **Status do Executor:** DONE (Pronto para re-review independente do ChatGPT)  
 **Governança:** DONE ≠ APPROVED (Operating Model v2.3)
@@ -1413,14 +1521,14 @@ function writeEvidenceReport(logData) {
 - **Base commit esperado:** \`fb7591e19d40a6c86f9a3030d73ed6848d2cb375\`
 - **Branch:** \`ux-cw04-wi02\`
 - **Diretório isolado:** \`prototypes/ux-cw04/wi02-calendar-scenarios/\`
-- **Repositório Público de Evidências (R1-F01):** \`https://github.com/sstjonas/tocadopeixe-ux-cw04-evidence/tree/main/wi02\`
+- **Repositório Público de Evidências (R1-F01 / R2):** \`https://github.com/sstjonas/tocadopeixe-ux-cw04-evidence/tree/main/wi02\`
 - **Repositório de produção:** 100% intocado (\`tocadopeixe/repo/tocadopeixe\` e \`tocadopeixe-repo\` limpos).
 
 ---
 
 ## 2. Superfícies Normativas v1.0
 
-1. **SCR-GES-004 — Calendário operacional e unidades** (janelas vigentes, propostas de alteração, dependências concorrentes, impact assessment stale e publicação por destino desacoplada).
+1. **SCR-GES-004 — Calendário operacional e unidades** (janelas vigentes, propostas de alteração, dependências concorrentes, impact assessment stale, version/base provenance e publicação por destino desacoplada).
 2. **SCR-GES-005 — Cenários e adoção** (simulação financeira baseada exclusivamente em premissas com limitações contratuais explícitas; medição rigorosa de adoção com denominador elegível e restrição de generalização).
 
 ---
@@ -1449,7 +1557,7 @@ function writeEvidenceReport(logData) {
 ### 4.1 Standalone Truthfulness Gate (v2.3)
 
 - **A1–A6 (Adversariais Harness-Only):** Nascem estritamente como **\`NOT_RUN\`** em modo standalone (com badge neutro cinza, ícone \`○\` e tag de origem \`harness\`).
-- **P1–P3 e N1–N8:** Avaliados dinamicamente em tempo real a partir do estado factual (\`source: runtime\`).
+- **P1–P3, N1–N8, ZD1, T1 e V1:** Avaliados dinamicamente em tempo real a partir do estado factual (\`source: runtime\`).
 - **Screenshot Canônica:** [standalone-proof-panel-not-run.png](screenshots/standalone-proof-panel-not-run.png)
 
 ### 4.2 Positive Proofs (P1-P3)
@@ -1470,7 +1578,7 @@ ${negRows}
 |---|---|---|---|---|:---:|
 ${advRows}
 
-### 4.5 Provas Adicionais de Rigor (ZD1 & T1 — Operating Model v2.3 / B01-D19)
+### 4.5 Provas Adicionais de Rigor (ZD1, T1 & V1 — Operating Model v2.3 / B01-D19 / R2-F01)
 
 | ID | Requisito / Claim | Fato Observado / Evidência | Esperado | Atual | Status |
 |---|---|---|---|---|:---:|
@@ -1482,7 +1590,7 @@ ${addRows}
 
 - **Falso Claim Detectado:** PASS (Avaliador factual detectou corrupção proposital e retornou FAIL).
 - **Mutation Test:** PASS (Restauração do fato material retornou PASS).
-- **Exit-Code Gate:** Conectado a todos os gates (cenários, P, N, A, ZD1, T1, standalone audit, self-check, mobile e console).
+- **Exit-Code Gate:** Conectado a todos os gates (cenários, P, N, A, ZD1, T1, V1, standalone audit, self-check, mobile e console).
 
 ---
 
