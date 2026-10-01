@@ -138,6 +138,11 @@
       expectedUnits: ['Salão Consolação', 'Cozinha Central', 'Estoque Moema'],
       reportedUnits: ['Salão Consolação', 'Cozinha Central', 'Estoque Moema'],
       missingUnits: [],
+      unitObservations: {
+        'Salão Consolação': { unit: 'Salão Consolação', value: 14, status: 'reportado', sourceRef: 'AUD-DEMO-061' },
+        'Cozinha Central': { unit: 'Cozinha Central', value: 0, status: 'reportado', sourceRef: 'AUD-DEMO-062' },
+        'Estoque Moema': { unit: 'Estoque Moema', value: 0, status: 'reportado', sourceRef: 'AUD-DEMO-063' }
+      },
       lastSynchronizedAt: '2026-09-30T23:59:00Z'
     },
 
@@ -295,6 +300,9 @@
       data: null
     },
 
+    // Security & Scope Event Log (Scenario 11 & Proof N7)
+    lastSecurityEvent: null,
+
     // Invariant Verification Log
     invariants: {
       p1: false,
@@ -433,6 +441,32 @@
   // Evaluates independent factual assertions; never trusts scenarioResults claims!
   // =========================================================================
 
+  // Shared Factual Evaluator for Scenario 1 / Metric Reading (Used by both normal run and Adversarial A1)
+  function evaluateScenario1Factual(s) {
+    s = s || State;
+    const def = METRIC_DEFINITIONS['MET-19'];
+    const obs = s.metricObservations ? s.metricObservations['MET-19'] : null;
+    const audFact = s.operationalFacts ? s.operationalFacts['AUD-DEMO-061'] : null;
+    const reading = calculateManagementReading('MET-19');
+    return (
+      def !== undefined &&
+      def.version === '1.0.0' &&
+      obs !== undefined &&
+      obs !== null &&
+      obs.sourceRef === 'AUD-DEMO-061' &&
+      audFact !== undefined &&
+      audFact !== null &&
+      audFact.id === 'AUD-DEMO-061' &&
+      s.sourceCoverage !== undefined &&
+      s.sourceCoverage.status === 'completa' &&
+      s.sourceCoverage.expectedUnits.length === 3 &&
+      s.sourceCoverage.reportedUnits.length === 3 &&
+      reading.definitionVersion === '1.0.0' &&
+      reading.displayValue === '14 horas' &&
+      reading.sourceRef === 'AUD-DEMO-061'
+    );
+  }
+
   function runAllInvariantAudits() {
     const results = {};
 
@@ -447,20 +481,35 @@
       obsMet19 !== undefined &&
       obsMet19.sourceRef === 'AUD-DEMO-061' &&
       State.operationalFacts['AUD-DEMO-061'] !== undefined &&
+      State.operationalFacts['AUD-DEMO-061'].id === 'AUD-DEMO-061' &&
       readingMet19.definitionVersion === '1.0.0' &&
       readingMet19.sourceRef === 'AUD-DEMO-061'
     );
     results.p1 = p1Pass;
 
-    // P2: Cadeia de plano completa
+    // P2: Cadeia de plano completa (R1-F07: STRICT REQUIREMENT: OutcomeObservation REAL)
     // Achado/Origem -> Plano -> Ação -> Evidence -> Verification -> Outcome
+    const hasValidOutcomes = State.actionPlan.outcomes.length > 0 &&
+      State.actionPlan.outcomes.every(out => {
+        const verDate = State.actionPlan.verifications['VER-ACT-01'] ? State.actionPlan.verifications['VER-ACT-01'].verifiedAt : null;
+        return (
+          out.id && out.id.startsWith('OUT-') &&
+          out.planId === 'PA-DEMO-061' &&
+          out.metricRef &&
+          out.observedEffect &&
+          out.recordedAt &&
+          (!verDate || out.recordedAt >= verDate)
+        );
+      });
+
     const p2Pass = (
       State.actionPlan.id === 'PA-DEMO-061' &&
       State.actionPlan.originRefs.includes('AUD-DEMO-061') &&
       State.actionPlan.actions.some(a => a.id === 'ACT-01') &&
       State.actionPlan.evidences['EVD-ACT-01'] !== undefined &&
       State.actionPlan.verifications['VER-ACT-01'] !== undefined &&
-      (State.actionPlan.outcomes.length === 0 || State.actionPlan.outcomes[0].id.startsWith('OUT-'))
+      State.actionPlan.verifications['VER-ACT-01'].status === 'aceita' &&
+      hasValidOutcomes === true
     );
     results.p2 = p2Pass;
 
@@ -476,7 +525,10 @@
     // Unidade faltante não vira zero no consolidado
     const n1Pass = (
       State.sourceCoverage.status !== 'parcial' ||
-      (State.sourceCoverage.missingUnits.length > 0 && !State.sourceCoverage.reportedUnits.includes(State.sourceCoverage.missingUnits[0]))
+      (State.sourceCoverage.missingUnits.length > 0 &&
+       !State.sourceCoverage.reportedUnits.includes(State.sourceCoverage.missingUnits[0]) &&
+       State.sourceCoverage.unitObservations[State.sourceCoverage.missingUnits[0]] &&
+       State.sourceCoverage.unitObservations[State.sourceCoverage.missingUnits[0]].value !== 0)
     );
     results.n1 = n1Pass;
 
@@ -504,37 +556,51 @@
     );
     results.n4 = n4Pass;
 
-    // N5: Ação sem evidence não verifica resultado
-    const act02 = State.actionPlan.actions.find(a => a.id === 'ACT-02');
-    const n5Pass = (
-      act02 && act02.status === 'pendente' && act02.evidenceRef === null
-    );
+    // N5: Ação executada sem evidence não verifica resultado (R1-F06)
+    const executedWithoutEvidence = State.actionPlan.actions.filter(a => a.status === 'executada' && !a.evidenceRef);
+    const hasInvalidVerification = executedWithoutEvidence.some(a => {
+      const ver = State.actionPlan.verifications['VER-' + a.id];
+      return ver && (ver.status === 'aceita' || ver.status === 'verificada');
+    });
+    const hasInvalidOutcome = executedWithoutEvidence.some(a => {
+      return State.actionPlan.outcomes.some(o => o.actionRef === a.id);
+    });
+    const n5Pass = !hasInvalidVerification && !hasInvalidOutcome;
     results.n5 = n5Pass;
 
     // N6: Reunião encerrada não fecha plano
     const n6Pass = (
       State.actionPlan.meeting.status !== 'encerrada' ||
-      State.actionPlan.status === 'EM_ANDAMENTO'
+      (State.actionPlan.status === 'EM_ANDAMENTO' &&
+       State.actionPlan.actions.some(a => a.status === 'pendente'))
     );
     results.n6 = n6Pass;
 
-    // N7: Responsável sem acesso não recebe atribuição
-    // Testado no cenário 11
-    results.n7 = true;
+    // N7: Responsável sem acesso não recebe atribuição (R1-F05: Derivado do evento factual de segurança)
+    const sec = State.lastSecurityEvent;
+    const targetAct = State.actionPlan.actions.find(a => a.id === 'ACT-02');
+    const n7Pass = (
+      sec !== null &&
+      sec.success === false &&
+      sec.attemptedActor === 'Prestador Sem Escopo' &&
+      typeof sec.rejectionReason === 'string' &&
+      sec.rejectionReason.length > 0 &&
+      targetAct !== undefined &&
+      targetAct.assignee === 'Engenheiro de Manutenção' &&
+      targetAct.assignee !== 'Prestador Sem Escopo'
+    );
+    results.n7 = n7Pass;
 
-    // A1: PASS autodeclarado não vale
-    // Se alguém injetar window.scenarioResults = { 1: 'PASS' } sem o estado factual bater, deve acusar falso!
+    // A1: PASS autodeclarado não vale (Avaliado dinamicamente via mutação deliberada pelo runner)
     results.a1 = true;
 
-    // A2: Badge hardcoded não vale
-    // Se DOM fingir "Cobertura completa" enquanto State.sourceCoverage.status for "parcial", invariant falha!
+    // A2: Badge hardcoded não mascara SourceCoverage factual (Avaliado dinamicamente via spoof de DOM)
     results.a2 = true;
 
-    // A3: Valor hardcoded não vale
-    // Altera fatos de observação e confere se a leitura projeta o valor recalculado
+    // A3: Valor sem provenance recalcula (Avaliado dinamicamente via mutação de fato)
     results.a3 = true;
 
-    // A4: Action status done forçado sem evidence não prova resultado
+    // A4: Action status done forçado sem evidence não prova resultado (Avaliado dinamicamente via injeção no state)
     results.a4 = true;
 
     // A5: Setter gerencial proibido
@@ -544,7 +610,7 @@
     );
     results.a5 = a5Pass;
 
-    // A6: Unidade sem fonte não entra como zero
+    // A6: Unidade sem fonte não entra como zero (Avaliado dinamicamente via cálculo + state + DOM)
     results.a6 = true;
 
     State.invariants = results;
@@ -564,6 +630,11 @@
       State.sourceCoverage.expectedUnits = ['Salão Consolação', 'Cozinha Central', 'Estoque Moema'];
       State.sourceCoverage.reportedUnits = ['Salão Consolação', 'Cozinha Central', 'Estoque Moema'];
       State.sourceCoverage.missingUnits = [];
+      State.sourceCoverage.unitObservations = {
+        'Salão Consolação': { unit: 'Salão Consolação', value: 14, status: 'reportado', sourceRef: 'AUD-DEMO-061' },
+        'Cozinha Central': { unit: 'Cozinha Central', value: 0, status: 'reportado', sourceRef: 'AUD-DEMO-062' },
+        'Estoque Moema': { unit: 'Estoque Moema', value: 0, status: 'reportado', sourceRef: 'AUD-DEMO-063' }
+      };
       State.metricObservations['MET-19'].isZeroDenominator = false;
       renderApp();
     },
@@ -576,6 +647,11 @@
       State.sourceCoverage.expectedUnits = ['Salão Consolação', 'Cozinha Central', 'Estoque Moema'];
       State.sourceCoverage.reportedUnits = ['Salão Consolação', 'Cozinha Central'];
       State.sourceCoverage.missingUnits = ['Estoque Moema'];
+      State.sourceCoverage.unitObservations = {
+        'Salão Consolação': { unit: 'Salão Consolação', value: 14, status: 'reportado', sourceRef: 'AUD-DEMO-061' },
+        'Cozinha Central': { unit: 'Cozinha Central', value: 0, status: 'reportado', sourceRef: 'AUD-DEMO-062' },
+        'Estoque Moema': { unit: 'Estoque Moema', value: null, status: 'ausente', sourceRef: null }
+      };
       renderApp();
     },
 
@@ -702,12 +778,14 @@
       // Attempt assignment
       const assignmentAttempt = tryAssignAction('ACT-02', unauthorizedActor);
       
-      // Store attempt result for display
+      // Store attempt result for display and N7 factual audit
       State.lastSecurityEvent = {
         attemptedActor: unauthorizedActor.name,
         actionId: 'ACT-02',
         success: assignmentAttempt.success,
         rejectionReason: assignmentAttempt.reason,
+        previousAssignee: previousAssignee,
+        currentAssignee: targetAction ? targetAction.assignee : null,
         timestamp: new Date().toISOString()
       };
       
@@ -1500,7 +1578,9 @@
     },
     calculateManagementReading,
     calculateBudgetComposition,
-    runAllInvariantAudits
+    runAllInvariantAudits,
+    evaluateScenario1Factual,
+    renderApp
   };
 
   // Automated initial render on load
